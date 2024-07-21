@@ -86,8 +86,8 @@ A continuously updated file containing Claude's recommendations for next steps i
 
 3. Clone the repository:
    ```
-   git clone https://github.com/yourusername/duplicate-file-updater.git
-   cd duplicate-file-updater
+   git clone https://github.com/parkertoddbrooks/duplicate-file-and-update-name-with-timestamp-sh.git
+   cd duplicate-file-and-update-name-with-timestamp-sh
    ```
 
 4. Run the installer script:
