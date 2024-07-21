@@ -164,7 +164,7 @@ The app will now start automatically when you log in to your Mac.
 
 For any issues not covered here, please check the debug output or submit an issue on the project's GitHub page at https://github.com/parkertoddbrooks/duplicate-file-and-update-name-with-timestamp-sh
 
-## Uninstallation
+## Uninstall
 
 To uninstall the Duplicate File and Update Name with Timestamp tool:
 
