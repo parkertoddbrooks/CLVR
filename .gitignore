@@ -2,7 +2,8 @@
 *git-ignore*
 *git_ignore*
 
-sed -i '' 's|*~_dev_files/automator-app/cleaned-and-signed/DuplicateWithTimestamp.app|_dev_files/automator-app/cleaned-and-signed/DuplicateWithTimestamp.app|g' .gitignore
+_dev_files/automator-app/cleaned-and-signed/*.app
+_dev_files/automator-app/cleaned-and-signed/DuplicateWithTimestamp.app
 
 # macOS system files
 .DS_Store
@@ -34,4 +35,5 @@ Temporary Items
 # Other common ignore patterns
 *.log
 *.tmp
-*.swp
+*.swp_dev_files/automator-app/cleaned-and-signed/DuplicateWithTimestamp.app/**
+_dev_files/automator-app/cleaned-and-signed/DuplicateWithTimestamp.app/**
