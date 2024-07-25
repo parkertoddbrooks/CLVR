@@ -1,6 +1,6 @@
 # Duplicate File and Update Name with Timestamp (App & Shell Script)
 
-This project provides an app and shell scrips that monitors the Desktop and Documents for file duplication events and automatically updates the names of duplicated files with a timestamp format.
+This project monitors the Desktop and Documents for file duplication events and automatically updates the names of duplicated files with a timestamp format. It can be run as an app, or in the CLI.
 
 ## App Process
 
