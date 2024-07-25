@@ -1,6 +1,6 @@
 # Duplicate File and Update Name with Timestamp (App & Shell Script)
 
-This project provides a Mac OS Automator app and shell scrips that monitor Desktop and Documents for file duplication events and automatically updates the names of duplicated files with a timestamp format.
+This project provides an app and shell scrips that monitors the Desktop and Documents for file duplication events and automatically updates the names of duplicated files with a timestamp format.
 
 ## App Process
 
@@ -9,6 +9,10 @@ When a file is duplicated:
 - If the file ends with " copy" (case insensitive), it will be renamed to `filename-copy-YYYY-MM-DD-HHMMSS.extension`
 - If the file already has a timestamp (from a previous duplication), a new timestamp will be appended: `filename-copy-YYYY-MM-DD-HHMMSS--YYYY-MM-DD-HHMMSS.extension`
 
+## Quick Start
+
+- [DuplicateWithTimestamp_Installer.dmg](https://github.com/parkertoddbrooks/duplicate-file-and-update-name-with-timestamp-sh/releases/download/v1.1.0/DuplicateWithTimestamp_Installer.dmg) 
+d
 ## Directory Structure
 
 ```
@@ -62,9 +66,7 @@ A continuously updated file containing Claude's recommendations for next steps i
 
 The DuplicateWithTimestamp.app is a macOS Automator application that provides a user-friendly graphical interface for managing the Duplicate File and Update Name with Timestamp service. This app simplifies the process of starting and stopping the file monitoring and renaming service without the need to use command-line instructions.
 
-## Installation
-
-1. Download the DuplicateWithTimestamp_Installer.dmg file from the latest release.
+1. Download the [DuplicateWithTimestamp_Installer.dmg](https://github.com/parkertoddbrooks/duplicate-file-and-update-name-with-timestamp-sh/releases/download/v1.1.0/DuplicateWithTimestamp_Installer.dmg) file from the latest release.
 
 2. Open the DMG file and drag the DuplicateWithTimestamp.app into your Applications folder.
 
