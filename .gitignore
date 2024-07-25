@@ -1,3 +1,7 @@
+# Ignore any file or directory with 'git-ignore' or 'git_ignore' in the name
+*git-ignore*
+*git_ignore*
+
 # macOS system files
 .DS_Store
 .AppleDouble
@@ -25,64 +29,8 @@ Network Trash Folder
 Temporary Items
 .apdisk
 
-# Shell script related
+# Other common ignore patterns
 *.log
 *.tmp
-
-# Compiled Python files
-*.pyc
-
-# Virtual environment
-venv/
-env/
-*.venv
-*.virtualenv
-
-# IDE specific files
-.vscode/
-.idea/
-
-# Custom ignore patterns for directories
-*_git_ignore*/
-*_git-ignore*/
-*git-ignore*/
-*git_ignore*/
-
-# Backup files
-*.bak
 *.swp
 *~
-
-# Compiled files
-*.com
-*.class
-*.dll
-*.exe
-*.o
-*.so
-
-# Packages
-*.7z
-*.dmg
-*.gz
-*.iso
-*.jar
-*.rar
-*.tar
-*.zip
-
-# Logs and databases
-*.log
-*.sql
-*.sqlite
-
-# OS generated files
-ehthumbs.db
-Thumbs.db
-
-# Node modules (if you ever use Node.js in your project)
-node_modules/
-
-# Python cache
-__pycache__/
-*.py[cod]
