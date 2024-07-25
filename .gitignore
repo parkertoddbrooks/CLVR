@@ -2,7 +2,7 @@
 *git-ignore*
 *git_ignore*
 
-*~_dev_files/automator-app/cleaned-and-signed/DuplicateWithTimestamp.app
+sed -i '' 's|*~_dev_files/automator-app/cleaned-and-signed/DuplicateWithTimestamp.app|_dev_files/automator-app/cleaned-and-signed/DuplicateWithTimestamp.app|g' .gitignore
 
 # macOS system files
 .DS_Store
