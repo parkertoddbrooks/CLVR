@@ -2,6 +2,8 @@
 *git-ignore*
 *git_ignore*
 
+*~_dev_files/automator-app/cleaned-and-signed/DuplicateWithTimestamp.app
+
 # macOS system files
 .DS_Store
 .AppleDouble
@@ -33,4 +35,3 @@ Temporary Items
 *.log
 *.tmp
 *.swp
-*~
