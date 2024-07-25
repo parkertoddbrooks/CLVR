@@ -11,8 +11,8 @@ When a file is duplicated:
 
 ## Quick Start
 
-- [DuplicateWithTimestamp_Installer.dmg](https://github.com/parkertoddbrooks/duplicate-file-and-update-name-with-timestamp-sh/releases/download/v1.1.0/DuplicateWithTimestamp_Installer.dmg) 
-d
+- [DuplicateWithTimestamp_Installer.dmg](https://github.com/parkertoddbrooks/duplicate-file-and-update-name-with-timestamp-sh/releases/download/v1.1.0/DuplicateWithTimestamp_Installer.dmg)
+
 ## Directory Structure
 
 ```
