@@ -1,42 +1,44 @@
-# Duplicate File and Update Name with Timestamp (Shell Script & App)
+# Duplicate File and Update Name with Timestamp (App & Shell Script)
 
-This project provides a shell script and Automator app that monitors specified directories for file duplication events and automatically updates the names of duplicated files with a timestamp format.
+This project provides a Mac OS Automator app and shell scrips that monitor Desktop and Documents for file duplication events and automatically updates the names of duplicated files with a timestamp format.
 
-## Features
-
-- Monitors specified directories (Desktop and Documents) for file duplication events
-- Automatically renames duplicated files with a timestamp
-- Handles multiple duplications by appending additional timestamps
-- Works with files ending in " copy" (case insensitive) or files already renamed by this script
+## App Process
 
 When a file is duplicated:
 
 - If the file ends with " copy" (case insensitive), it will be renamed to `filename-copy-YYYY-MM-DD-HHMMSS.extension`
 - If the file already has a timestamp (from a previous duplication), a new timestamp will be appended: `filename-copy-YYYY-MM-DD-HHMMSS--YYYY-MM-DD-HHMMSS.extension`
 
-### Key Considerations
-
-- The script is designed to run continuously in the background, monitoring specified directories for file duplication events. 
-- By default, the script monitors the user's Desktop and Documents folders, providing a convenient out-of-the-box experience. However, users can still specify a different directory if needed.
-- This project was developed and tested on macOS Sonoma 14.5. The script is specifically designed for macOS and may require modifications for use on other Unix-like systems.
-- Choose between using the script directly (for more control and customization) or the Automator app (for ease of use and integration with macOS).
-
 ## Directory Structure
 
 ```
-/duplicate-file-and-update-name-with-timestamp-sh/
-├── ai-insights
-├── automator-set-up.sh
-├── DuplicateFileManager.sh
-├── DuplicateWithTimestamp.app
-├── DuplicateWithTimestamp.sh
-├── install.sh
-└──README.md
+duplicate-file-and-update-name-with-timestamp-sh/
+├── _dev_files/
+│   ├── automator-app/
+│   │   ├── cleaned-and-signed
+|   |   |── original-unsigned
+|   |   |   └── DuplicateWithTimestamp.app
+│   │   └── clean_and_sign_rsync.sh
+│   ├── code-for-automator-app/
+│   │   └── automator-workflow.sh
+│   └── dmg-build-parts/
+│       └── DMG-Canvas/
+│           └── DuplicateWithTimestamp_Installer.dmgcanvas
+├── app-binary/
+│   └── DuplicateWithTimestamp_Installer.dmg
+├── app-cli/
+│   ├── DuplicateWithTimestamp.sh
+│   ├── DuplicateFileManager.sh
+│   └── setup.sh
+├── LICENSE
+├── README.md
+└── README-dev-resource-updating-and-creating-DMG.md
+
 ```
 
 ## AI-Assisted Development Insights
 
-Our project was developed with Claude.ai and Claude Engineer CLI. The `/ai_insight/` directory contains valuable information about this AI-assisted development approach:
+The project was developed with Claude.ai and Claude Engineer CLI. The `/ai_insight/` directory contains valuable information about this AI-assisted development approach:
 
 ### cli-dump
 Complete transcripts of Claude Engineering CLI sessions.
@@ -56,33 +58,67 @@ Prompts designed to efficiently bring Claude Engineering CLI back up to speed af
 ### steps
 A continuously updated file containing Claude's recommendations for next steps in the project, providing a clear roadmap for development.
 
-## Installation and Usage
+## App Installation and Usage Guide
+
+The DuplicateWithTimestamp.app is a macOS Automator application that provides a user-friendly graphical interface for managing the Duplicate File and Update Name with Timestamp service. This app simplifies the process of starting and stopping the file monitoring and renaming service without the need to use command-line instructions.
+
+## Installation
+
+1. Download the DuplicateWithTimestamp_Installer.dmg file from the latest release.
+
+2. Open the DMG file and drag the DuplicateWithTimestamp.app into your Applications folder.
+
+3. The first time you run the app, macOS may display a security warning. If this happens:
+   - Open System Preferences > Security & Privacy
+   - Click the "Open Anyway" button next to the message about DuplicateWithTimestamp.app
+   
+### Starting the Service
+
+1. Double-click DuplicateWithTimestamp.app in your Applications folder to start the service.
+
+2. You should see a notification confirming that the service has started.
+
+3. The app will now monitor your Desktop and Documents folders for file duplication events.
+
+### Stopping the Service
+
+1. Double-click DuplicateWithTimestamp.app again to stop the service.
+
+2. You should see a notification confirming that the service has stopped.
+
+## Setting Up Automatic Start on Login
+
+To have the app start automatically when you log in:
+
+1. Open "System Preferences" on your Mac.
+2. Go to "Users & Groups".
+3. Select your user account.
+4. Click on the "Login Items" tab.
+5. Click the "+" button below the list of login items.
+6. Navigate to and select the DuplicateWithTimestamp.app in your Applications folder.
+7. Click "Add".
+
+## Uninstallation
+
+To uninstall the app:
+
+1. Stop the service by double-clicking the app if it's running.
+2. Drag DuplicateWithTimestamp.app from your Applications folder to the Trash.
+3. Delete the following files if they exist:
+   - ~/.local/bin/DuplicateWithTimestamp.sh
+   - ~/.local/bin/DuplicateFileManager.sh
+4. Remove the app from your login items if you added it there.
+
+After these steps, the app will be completely removed from your system.
+
+
+## CLI Installation and Usage Guide
 
 ### Prerequisites
 - macOS or Unix-based operating system
 - bash or zsh shell
-- fswatch utility (can be installed via Homebrew: `brew install fswatch`)
 
 ### Installation Steps
-
-1. Install fswatch (if not already installed):
-   On macOS, you can use Homebrew:
-   ```
-   brew install fswatch
-   ```
-   For other Unix-based systems, use your system's package manager or install from source: https://github.com/emcrisostomo/fswatch
-   
-   
-2. Add ~/.local/bin/ to your PATH:
-   Add the following line to your ~/.bashrc or ~/.zshrc file:
-   ```
-   export PATH="$HOME/.local/bin:$PATH"
-   ```
-   Then, reload your shell configuration:
-   ```
-   source ~/.bashrc  # or source ~/.zshrc if you're using zsh
-   
-   ```
 
 3. Clone the repository:
    ```
@@ -96,9 +132,18 @@ A continuously updated file containing Claude's recommendations for next steps i
    ```
    ./install.sh
    ```
-   This will copy the necessary scripts to ~/.local/bin/ and make them executable.
-
-### Using from the Command Line (background process)
+   This will 
+   - copy the necessary scripts to ~/.local/bin/ and make them executable.
+   - Install fswatch (if not already installed)
+   - Add ~/.local/bin/ to your PATH if needed.
+   
+   
+3. Reload your shell configuration:
+   ```
+   source ~/.bashrc  # or source ~/.zshrc if you're using zsh
+   
+   ```
+### CLI background process
 
 1. Start the service:
    ```
@@ -120,7 +165,7 @@ A continuously updated file containing Claude's recommendations for next steps i
    ~/.local/bin/DuplicateFileManager.sh toggle
    ```
    
-### Using from the Command Line (foreground process)
+### CLI background process
 
 Run the shell script without arguments to monitor your Desktop and Documents folders. Use Ctrl+C to stop the script.
 
@@ -128,45 +173,7 @@ Run the shell script without arguments to monitor your Desktop and Documents fol
 ~/.local/bin/DuplicateWithTimestamp.sh
 ```
 
-### Using the App
-
-The DuplicateWithTimestamp.app is a macOS Automator application that provides a user-friendly graphical interface for managing the Duplicate File and Update Name with Timestamp service. This app simplifies the process of starting and stopping the file monitoring and renaming service without the need to use command-line instructions.
-
-Key features of the Automator app:
-
-1. Easy toggle functionality: Double-clicking the app alternates between starting and stopping the service.
-2. Visual feedback: The app uses macOS notifications to inform you when the service starts or stops.
-3. Seamless integration: It integrates smoothly with macOS, allowing you to add it to your login items for automatic startup.
-4. Background operation: Once started, the app runs the service in the background, allowing you to continue with your work without interruption.
-
-The Automator app is ideal for users who prefer a graphical interface or are less comfortable with command-line operations. It provides the same functionality as the command-line interface but in a more accessible format, making it easier to manage the file duplication and renaming service on your Mac.
-
-1. Double-click the DuplicateWithTimestamp.app in Finder to start the service.
-2. Double-click the app again to stop the service.
-
-### Setting Up Automatic Start on Login
-
-1. Open "System Preferences" on your Mac.
-2. Go to "Users & Groups".
-3. Select your user account.
-4. Click on the "Login Items" tab.
-5. Click the "+" button below the list of login items.
-6. Navigate to and select the DuplicateWithTimestamp.app.
-7. Click "Add".
-
-The app will now start automatically when you log in to your Mac.
-
-## Troubleshooting
-
-- If the service doesn't start, check the log files in ~/.local/log/ for error messages.
-- Ensure fswatch is installed and in your PATH.
-- Verify that ~/.local/bin/ is in your PATH.
-- If the renaming doesn't work as expected, check the permissions of the monitored directories.
-- For issues with the Automator app, try running the script directly from the command line to isolate the problem.
-
-For any issues not covered here, please check the debug output or submit an issue on the project's GitHub page at https://github.com/parkertoddbrooks/duplicate-file-and-update-name-with-timestamp-sh
-
-## Uninstall
+## Uninstallation
 
 To uninstall the Duplicate File and Update Name with Timestamp tool:
 
@@ -191,16 +198,126 @@ To uninstall the Duplicate File and Update Name with Timestamp tool:
    rm -rf ~/.local/log
    ```
 
-5. If you added the app to your login items, remove it from System Preferences > Users & Groups > Login Items.
+## Build Insights and Developer Guide
 
-After these steps, the tool will be completely removed from your system.
+For a detailed overview on how to update the shell scripts, the Automator app, and create a signed and notarized DMG installer, please refer to our comprehensive developer resource guide:
+
+[README-dev-resource-updating-and-creating-DMG.md](README-dev-resource-updating-and-creating-DMG.md)
+
+This guide provides step-by-step instructions and best practices for maintaining and enhancing the Duplicate File Updater project.
 
 ## Version History
 
-- v1.0.0 (Current)
+- v1.0.0 
   - Initial release
   - Basic functionality for renaming duplicated files
   - Command-line interface and Automator app support
+  
+- v1.1.0 (Current)
+  - Created a signed and notarized DMG and App for distrubtion and installation
+  - Created automatic installation process for all dependencies 
+  - Refined file path handling for better cross-system compatibility
+  - Enhanced error handling and debugging capabilities
+  - Added comprehensive logging for both Automator app and CLI versions
+  - Improved documentation, including separate guides for app and CLI usage
+  - Improved uninstallation process for cleaner removal
+  - Added version history tracking
+  - Created a build insights and developer guide
+
+
+# Troubleshooting Guide
+
+This guide covers common issues and their solutions for both the Automator app and CLI versions of the tool.
+
+This project was developed and tested on macOS Sonoma 14.5. The script is specifically designed for macOS and may require modifications for use on other Unix-like systems.
+
+## General Issues
+
+1. **App Location**
+   - Ensure the DuplicateWithTimestamp.app is located in the /Applications/ folder. The app must be in this location to function properly.
+
+2. **Permissions**
+   - Make sure the app has necessary permissions to access your Desktop and Documents folders.
+   - To grant permissions: System Preferences > Security & Privacy > Privacy > Files and Folders
+
+## Automator App Issues
+
+1. **App Doesn't Start**
+   - Check if the app is in the /Applications/ folder.
+   - Try restarting your computer and running the app again.
+   - Check the log files (~/automator_workflow_debug.log and ~/startup_check_debug.log) for error messages.
+
+2. **No Notification When Starting/Stopping**
+   - Ensure notifications are enabled for the app in System Preferences > Notifications.
+
+3. **Files Not Being Renamed**
+   - Verify the app is running 
+        - Open Activity Monitor (found in Applications > Utilities) and search for "DuplicateWithTimestamp" in the process list
+   - Check the log files for any error messages. (found in your home directory: your-computer > your-hardrive > users > your-username > automator_workflow_debug.log and startup_check_debug.log)
+   - Ensure you're duplicating files in the Desktop or Documents folders.
+
+## CLI Version Issues
+
+1. **Command Not Found**
+   - Ensure ~/.local/bin is in your PATH. You can check with:
+     ```
+     echo $PATH | grep ~/.local/bin
+     ```
+   - If not present, add the following to your ~/.bash_profile or ~/.zshrc:
+     ```
+     export PATH="$HOME/.local/bin:$PATH"
+     ```
+   - Reload your shell configuration:
+     ```
+     source ~/.bash_profile  # or source ~/.zshrc if using zsh
+     ```
+
+2. **Service Doesn't Start**
+   - Check if fswatch is installed:
+     ```
+     which fswatch
+     ```
+   - If not installed, run:
+     ```
+     brew install fswatch
+     ```
+
+3. **Files Not Being Renamed**
+   - Ensure the service is running:
+     ```
+     ~/.local/bin/DuplicateFileManager.sh status
+     ```
+   - Check the log files in ~/.local/log/ for any error messages.
+
+4. **Permission Denied Errors**
+   - Ensure the scripts in ~/.local/bin/ are executable:
+     ```
+     ls -l ~/.local/bin/Duplicate*.sh
+     ```
+   - If not, make them executable:
+     ```
+     chmod +x ~/.local/bin/Duplicate*.sh
+     ```
+
+## Log Files
+
+- Automator app logs: ~/automator_workflow_debug.log and ~/startup_check_debug.log
+- CLI version logs: ~/.local/log/DuplicateFileManager.log
+
+Check these log files for detailed error messages and debugging information.
+
+## Still Having Issues?
+
+If you've tried these solutions and are still experiencing problems:
+
+1. Make sure you're using the latest version of the tool.
+2. Check the GitHub repository for known issues or to report a new problem:
+   https://github.com/parkertoddbrooks/duplicate-file-and-update-name-with-timestamp-sh
+
+For persistent issues, please submit a detailed bug report including:
+- Your macOS version
+- Steps to reproduce the issue
+- Relevant portions of the log files
 
 ## Contributing
 
@@ -209,4 +326,3 @@ We welcome contributions to improve the Duplicate File and Update Name with Time
 # License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
