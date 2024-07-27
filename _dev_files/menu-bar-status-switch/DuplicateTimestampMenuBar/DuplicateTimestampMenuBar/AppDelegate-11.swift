@@ -50,4 +50,3 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
-

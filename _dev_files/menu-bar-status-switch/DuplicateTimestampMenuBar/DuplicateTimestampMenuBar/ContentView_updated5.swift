@@ -13,7 +13,7 @@ struct ContentView: View {
                 Spacer()
                 Toggle("", isOn: $isEnabled)
                     .labelsHidden()
-                    .toggleStyle(SwitchToggleStyle())
+                    .toggleStyle(SwitchToggleStyle(tint: Color.blue))
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
@@ -38,7 +38,7 @@ struct ContentView: View {
                 .stroke(Color(NSColor.separatorColor), lineWidth: 0.5)
         )
         .shadow(color: Color.black.opacity(0.1), radius: 1, x: 0, y: 1)
-        .frame(width: 253)
+        .frame(width: 253) // Increased width by 15%
     }
 }
 
@@ -72,4 +72,3 @@ struct ContentView_Previews: PreviewProvider {
         }
     }
 }
-

@@ -13,10 +13,11 @@ struct ContentView: View {
                 Spacer()
                 Toggle("", isOn: $isEnabled)
                     .labelsHidden()
-                    .toggleStyle(SwitchToggleStyle())
+                    .toggleStyle(SwitchToggleStyle(tint: .accentColor))
+                    .scaleEffect(0.8)
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(.vertical, 8)
             
             Divider()
             
@@ -29,7 +30,7 @@ struct ContentView: View {
             }
             .buttonStyle(PlainButtonStyle())
             .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(.vertical, 4)
         }
         .background(VisualEffectView(material: .menu, blendingMode: .behindWindow))
         .cornerRadius(5)
@@ -64,12 +65,11 @@ struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
         Group {
             ContentView()
-                .frame(width: 253, height: 100)
+                .frame(width: 253, height: 80)
                 .preferredColorScheme(.light)
             ContentView()
-                .frame(width: 253, height: 100)
+                .frame(width: 253, height: 80)
                 .preferredColorScheme(.dark)
         }
     }
 }
-

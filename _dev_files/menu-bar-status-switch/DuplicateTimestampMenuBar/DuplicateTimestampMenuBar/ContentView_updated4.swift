@@ -8,12 +8,11 @@ struct ContentView: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
                 Text("Duplicate + Timestamp")
-                    .font(.system(size: 13, weight: .semibold))
-                    .lineLimit(1)
+                    .font(.system(size: 13, weight: .medium))
                 Spacer()
                 Toggle("", isOn: $isEnabled)
                     .labelsHidden()
-                    .toggleStyle(SwitchToggleStyle())
+                    .toggleStyle(SwitchToggleStyle(tint: Color.accentColor))
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
@@ -38,7 +37,6 @@ struct ContentView: View {
                 .stroke(Color(NSColor.separatorColor), lineWidth: 0.5)
         )
         .shadow(color: Color.black.opacity(0.1), radius: 1, x: 0, y: 1)
-        .frame(width: 253)
     }
 }
 
@@ -64,12 +62,11 @@ struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
         Group {
             ContentView()
-                .frame(width: 253, height: 100)
+                .frame(width: 250, height: 100)
                 .preferredColorScheme(.light)
             ContentView()
-                .frame(width: 253, height: 100)
+                .frame(width: 250, height: 100)
                 .preferredColorScheme(.dark)
         }
     }
 }
-

@@ -13,12 +13,13 @@ struct ContentView: View {
                 Spacer()
                 Toggle("", isOn: $isEnabled)
                     .labelsHidden()
-                    .toggleStyle(SwitchToggleStyle())
+                    .toggleStyle(SwitchToggleStyle(tint: .accentColor))
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
             
             Divider()
+                .background(Color(NSColor.separatorColor))
             
             Button(action: {
                 NSApplication.shared.terminate(nil)
@@ -72,4 +73,3 @@ struct ContentView_Previews: PreviewProvider {
         }
     }
 }
-

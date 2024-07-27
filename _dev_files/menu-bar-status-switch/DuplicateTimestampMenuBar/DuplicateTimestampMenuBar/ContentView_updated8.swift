@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 struct ContentView: View {
     @State private var isEnabled = false
@@ -11,12 +12,10 @@ struct ContentView: View {
                     .font(.system(size: 13, weight: .semibold))
                     .lineLimit(1)
                 Spacer()
-                Toggle("", isOn: $isEnabled)
-                    .labelsHidden()
-                    .toggleStyle(SwitchToggleStyle())
+                NSSwitch($isEnabled)
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(.vertical, 8)
             
             Divider()
             
@@ -29,7 +28,7 @@ struct ContentView: View {
             }
             .buttonStyle(PlainButtonStyle())
             .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(.vertical, 4)
         }
         .background(VisualEffectView(material: .menu, blendingMode: .behindWindow))
         .cornerRadius(5)
@@ -39,6 +38,37 @@ struct ContentView: View {
         )
         .shadow(color: Color.black.opacity(0.1), radius: 1, x: 0, y: 1)
         .frame(width: 253)
+    }
+}
+
+struct NSSwitch: NSViewRepresentable {
+    @Binding var isOn: Bool
+
+    func makeNSView(context: Context) -> NSSwitch {
+        let switch = NSSwitch()
+        switch.target = context.coordinator
+        switch.action = #selector(Coordinator.toggleSwitch)
+        return switch
+    }
+
+    func updateNSView(_ nsView: NSSwitch, context: Context) {
+        nsView.state = isOn ? .on : .off
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+
+    class Coordinator: NSObject {
+        var parent: NSSwitch
+
+        init(_ parent: NSSwitch) {
+            self.parent = parent
+        }
+
+        @objc func toggleSwitch(_ sender: NSSwitch) {
+            parent.isOn = sender.state == .on
+        }
     }
 }
 
@@ -64,12 +94,11 @@ struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
         Group {
             ContentView()
-                .frame(width: 253, height: 100)
+                .frame(width: 253, height: 80)
                 .preferredColorScheme(.light)
             ContentView()
-                .frame(width: 253, height: 100)
+                .frame(width: 253, height: 80)
                 .preferredColorScheme(.dark)
         }
     }
 }
-
