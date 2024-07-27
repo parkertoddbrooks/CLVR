@@ -2,7 +2,7 @@
 //  Item.swift
 //  DuplicateTimestampMenuBar
 //
-//  Created by Parker Todd Brooks on 7/27/24.
+//  Created by Parker Todd Brooks on 7/26/24.
 //
 
 import Foundation
