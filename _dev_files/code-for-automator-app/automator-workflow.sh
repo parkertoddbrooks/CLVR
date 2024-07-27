@@ -123,4 +123,24 @@ log_message "Open, check for required files, install if needed and run completed
 
 
 
+# Install menu bar app
+MENU_BAR_APP_SOURCE="$RESOURCES_DIR/DuplicateTimestampMenuBar.app"
+MENU_BAR_APP_DEST="/Applications/DuplicateTimestampMenuBar.app"
+
+if [ -d "$MENU_BAR_APP_SOURCE" ]; then
+    log_message "Installing menu bar app..."
+    if [ -d "$MENU_BAR_APP_DEST" ]; then
+        rm -rf "$MENU_BAR_APP_DEST"
+    fi
+    cp -R "$MENU_BAR_APP_SOURCE" "$MENU_BAR_APP_DEST"
+    chmod -R 755 "$MENU_BAR_APP_DEST"
+    log_message "Menu bar app installed to $MENU_BAR_APP_DEST"
+    
+    # Optionally launch the menu bar app
+    open "$MENU_BAR_APP_DEST"
+    log_message "Launched menu bar app"
+else
+    log_message "Error: Menu bar app not found in $MENU_BAR_APP_SOURCE"
+fi
+
 log_message "Automator workflow completed."

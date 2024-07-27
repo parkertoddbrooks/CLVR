@@ -1,0 +1,16 @@
+
+
+/Users/parker/Documents/dev/claude-engineer/_Projects/duplicate-file-and-update-name-with-timestamp-sh/_dev_files/menu-bar-status-switch/DuplicateTimestampMenuBar/DuplicateTimestampMenuBar/DuplicateTimestampMenuBarApp.swift:50:17: error: cannot find 'showAlert' in scope
+                showAlert(message: "Failed to enable Duplicate + Timestamp")
+                ^~~~~~~~~
+/Users/parker/Documents/dev/claude-engineer/_Projects/duplicate-file-and-update-name-with-timestamp-sh/_dev_files/menu-bar-status-switch/DuplicateTimestampMenuBar/DuplicateTimestampMenuBar/DuplicateTimestampMenuBarApp.swift:65:17: error: cannot find 'showAlert' in scope
+                showAlert(message: "Failed to disable Duplicate + Timestamp")
+                ^~~~~~~~~
+
+/Users/parker/Documents/dev/claude-engineer/_Projects/duplicate-file-and-update-name-with-timestamp-sh/_dev_files/menu-bar-status-switch/DuplicateTimestampMenuBar/DuplicateTimestampMenuBar/DuplicateTimestampMenuBarApp.swift:50:17: Cannot find 'showAlert' in scope
+
+/Users/parker/Documents/dev/claude-engineer/_Projects/duplicate-file-and-update-name-with-timestamp-sh/_dev_files/menu-bar-status-switch/DuplicateTimestampMenuBar/DuplicateTimestampMenuBar/DuplicateTimestampMenuBarApp.swift:65:17: Cannot find 'showAlert' in scope
+
+
+
+Build failed    7/26/24, 21:23    3.4 seconds
