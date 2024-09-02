@@ -1,4 +1,5 @@
 import Cocoa
+import QuartzCore
 
 class ToggleView: NSView {
     private var titleField: NSTextField!
@@ -46,11 +47,24 @@ class AppDelegate: NSObject {
         if let button = statusItem?.button {
             button.action = #selector(toggleMenu)
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
+            button.wantsLayer = true
         }
         
         updateStatusItemIcon()
         setupMenu()
         hideAppFromDock()
+    }
+
+    func wiggleStatusItemIcon() {
+        guard let button = statusItem?.button else { return }
+        
+        let animation = CAKeyframeAnimation(keyPath: "transform.translation.x")
+        animation.values = [0, 2, -2, 1.5, -1.5, 0]
+        animation.keyTimes = [0, 0.2, 0.4, 0.6, 0.8, 1]
+        animation.duration = 1.0
+        animation.isAdditive = true
+        
+        button.layer?.add(animation, forKey: "wiggle.right.byLayer")
     }
     
     func setupMenu() {
@@ -75,6 +89,7 @@ class AppDelegate: NSObject {
     
     @objc func toggleFeature(_ sender: NSSwitch) {
         isEnabled = sender.state == .on
+        updateStatusItemIcon()
         if isEnabled {
             duplicateAndTimestamp()
         }
@@ -88,6 +103,7 @@ class AppDelegate: NSObject {
     func updateStatusItemIcon() {
         let iconName = isEnabled ? "doc.on.doc.fill" : "doc.on.doc"
         statusItem?.button?.image = NSImage(systemSymbolName: iconName, accessibilityDescription: "Duplicate")
+        wiggleStatusItemIcon()
     }
     
     func hideAppFromDock() {
