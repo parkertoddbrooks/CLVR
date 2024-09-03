@@ -34,24 +34,37 @@ class FileSystemWatcher {
         self.queue = DispatchQueue(label: "com.example.FileSystemWatcher", qos: .utility)
 
         for path in paths {
+            log("Setting up file system watcher for path: \(path)")
             let fd = open(path, O_EVTONLY)
             if fd >= 0 {
                 let source = DispatchSource.makeFileSystemObjectSource(fileDescriptor: fd, eventMask: .all, queue: queue)
                 source.setEventHandler { [weak self] in
                     let flags = source.data
-                    if flags.contains(.write) || flags.contains(.rename) {
-                        self?.checkForNewFiles(in: path)
-                    }
+                    self?.handleFileSystemEvent(flags: flags, path: path)
                 }
                 source.setCancelHandler {
                     close(fd)
                 }
                 source.resume()
                 sources.append(source)
+                log("File system watcher set up successfully for path: \(path)")
             } else {
                 log("Error: Failed to open file descriptor for path: \(path)")
             }
         }
+    }
+
+    private func handleFileSystemEvent(flags: DispatchSource.FileSystemEvent, path: String) {
+        var events: [String] = []
+        if flags.contains(.write) { events.append("write") }
+        if flags.contains(.extend) { events.append("extend") }
+        if flags.contains(.attrib) { events.append("attrib") }
+        if flags.contains(.link) { events.append("link") }
+        if flags.contains(.rename) { events.append("rename") }
+        if flags.contains(.revoke) { events.append("revoke") }
+        
+        log("File system event detected: \(events.joined(separator: ", ")) on path: \(path)")
+        checkForNewFiles(in: path)
     }
 
     private func checkForNewFiles(in directory: String) {
@@ -62,6 +75,7 @@ class FileSystemWatcher {
     }
 
     private func performFileCheck(in directory: String) {
+        log("Performing file check in directory: \(directory)")
         let fileManager = FileManager.default
         let enumerator = fileManager.enumerator(atPath: directory)
         let currentDate = Date()
@@ -74,15 +88,19 @@ class FileSystemWatcher {
 
                 // Check if the file was created or modified in the last second
                 if currentDate.timeIntervalSince(creationDate) < 1 || currentDate.timeIntervalSince(modificationDate) < 1 {
+                    log("New or modified file detected: \(fullPath)")
                     self.callback(fullPath)
                 }
             }
         }
+        log("File check completed in directory: \(directory)")
     }
 
     func stopWatching() {
+        log("Stopping file system watchers")
         sources.forEach { $0.cancel() }
         sources.removeAll()
+        log("All file system watchers stopped")
     }
 }
 
@@ -96,6 +114,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     private var fileSystemWatcher: FileSystemWatcher?
     var isDebugMode = false
+    var debugWindow: NSWindow?
+    private var desktopBookmark: Data?
+    private var documentsBookmark: Data?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         log("Application launched")
@@ -116,6 +137,36 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             requestPermission()
         } else if isEnabled {
             startWatching()
+        }
+
+        setupDebugWindow()
+    }
+
+    func setupDebugWindow() {
+        debugWindow = NSWindow(contentRect: NSRect(x: 100, y: 100, width: 300, height: 200),
+                               styleMask: [.titled, .closable, .miniaturizable, .resizable],
+                               backing: .buffered,
+                               defer: false)
+        debugWindow?.title = "Debug Info"
+        debugWindow?.isReleasedWhenClosed = false
+        
+        let textView = NSTextView(frame: debugWindow!.contentView!.bounds)
+        textView.isEditable = false
+        textView.autoresizingMask = [.width, .height]
+        debugWindow?.contentView?.addSubview(textView)
+    }
+
+    @objc func toggleDebugMode() {
+        isDebugMode = !isDebugMode
+        log("Debug mode \(isDebugMode ? "enabled" : "disabled")")
+        if isDebugMode {
+            debugWindow?.makeKeyAndOrderFront(nil)
+        } else {
+            debugWindow?.orderOut(nil)
+        }
+        // Update UI to reflect debug mode status
+        if let menuItem = statusItem?.menu?.item(withTitle: "Toggle Debug Mode") {
+            menuItem.state = isDebugMode ? .on : .off
         }
     }
 
@@ -155,15 +206,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    @objc func toggleDebugMode() {
-        isDebugMode = !isDebugMode
-        log("Debug mode \(isDebugMode ? "enabled" : "disabled")")
-        // Update UI to reflect debug mode status
-        if let menuItem = statusItem?.menu?.item(withTitle: "Toggle Debug Mode") {
-            menuItem.state = isDebugMode ? .on : .off
-        }
-    }
-
     func startWatching() {
         let watchedPaths = getWatchedPaths()
 
@@ -181,22 +223,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         sendNotification(title: "DuplicateFileManager", message: "File watching stopped")
     }
 
-    func getWatchedPaths() -> [String] {
-        let fileManager = FileManager.default
-        var paths: [String] = []
-
-        if let desktopURL = fileManager.urls(for: .desktopDirectory, in: .userDomainMask).first {
-            paths.append(desktopURL.path)
-        }
-
-        if let documentsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first {
-            paths.append(documentsURL.path)
-        }
-
-        return paths
+    public func getWatchedPaths() -> [String] {
+        return resolveBookmarks().map { $0.path }
     }
 
-    func renameFile(at file: String) {
+    public func renameFile(at file: String) -> String {
         log("Detected new file: \(file)")
 
         let url = URL(fileURLWithPath: file)
@@ -209,13 +240,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if name.lowercased().hasSuffix(" copy") {
             name = name.replacingOccurrences(of: " copy", with: "", options: [.caseInsensitive, .anchored])
             let newName = "\(name)-copy-\(timestamp).\(fileExtension)"
-            moveFile(from: file, to: (dir as NSString).appendingPathComponent(newName))
+            let newPath = (dir as NSString).appendingPathComponent(newName)
+            moveFile(from: file, to: newPath)
+            return newPath
         } else if let range = name.range(of: "-copy-\\d{4}-\\d{2}-\\d{2}-\\d{6}(--\\d{4}-\\d{2}-\\d{2}-\\d{6})*$", options: .regularExpression) {
             let baseName = String(name[..<range.lowerBound])
             let newName = "\(baseName)-copy-\(timestamp).\(fileExtension)"
-            moveFile(from: file, to: (dir as NSString).appendingPathComponent(newName))
+            let newPath = (dir as NSString).appendingPathComponent(newName)
+            moveFile(from: file, to: newPath)
+            return newPath
         } else {
             log("File does not match renaming criteria: \(file)")
+            return file
         }
     }
 
@@ -228,7 +264,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    private func formattedTimestamp() -> String {
+    public func formattedTimestamp() -> String {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd-HHmmss"
         return dateFormatter.string(from: Date())
@@ -260,82 +296,135 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func requestPermission() {
-        let alert = NSAlert()
-        alert.messageText = "Permission Required"
-        alert.informativeText = "This app needs access to your Desktop and Documents folders. Please grant access in the next dialog."
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: "OK")
-        alert.addButton(withTitle: "Cancel")
-
-        let response = alert.runModal()
-        if response == .alertFirstButtonReturn {
-            let desktopURL = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first!
-            let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-
-            NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: desktopURL.path)
-            NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: documentsURL.path)
-
-            if verifyFolderAccess() {
-                startWatching()
-            } else {
-                log("Failed to gain access to watched folders")
-                let failureAlert = NSAlert()
-                failureAlert.messageText = "Access Denied"
-                failureAlert.informativeText = "Failed to gain access to the Desktop and Documents folders. Please check your system preferences and try again."
-                failureAlert.alertStyle = .critical
-                failureAlert.runModal()
+        let openPanel = NSOpenPanel()
+        openPanel.canChooseDirectories = true
+        openPanel.canChooseFiles = false
+        openPanel.allowsMultipleSelection = false
+        openPanel.message = "Please select your Desktop folder"
+        openPanel.prompt = "Select Desktop"
+        
+        if openPanel.runModal() == .OK {
+            guard let desktopURL = openPanel.url else {
+                log("Failed to get Desktop URL")
+                return
             }
-        } else {
-            log("Permission denied to access Desktop and Documents folders")
+            
+            openPanel.message = "Please select your Documents folder"
+            openPanel.prompt = "Select Documents"
+            
+            if openPanel.runModal() == .OK {
+                guard let documentsURL = openPanel.url else {
+                    log("Failed to get Documents URL")
+                    return
+                }
+                
+                createAndStoreBookmarks()
+                
+                if verifyFolderAccess() {
+                    startWatching()
+                } else {
+                    log("Failed to gain access to watched folders")
+                    let failureAlert = NSAlert()
+                    failureAlert.messageText = "Access Denied"
+                    failureAlert.informativeText = "Failed to gain access to the Desktop and Documents folders. Please check your system preferences and try again."
+                    failureAlert.alertStyle = .critical
+                    failureAlert.runModal()
+                }
+            }
         }
     }
 
-    func verifyFolderAccess() -> Bool {
-        let paths = getWatchedPaths()
-        for path in paths {
-            if !FileManager.default.isReadableFile(atPath: path) || !FileManager.default.isWritableFile(atPath: path) {
+    public func verifyFolderAccess() -> Bool {
+        let urls = resolveBookmarks()
+        for url in urls {
+            guard url.startAccessingSecurityScopedResource() else {
+                return false
+            }
+            defer { url.stopAccessingSecurityScopedResource() }
+            
+            if !FileManager.default.isReadableFile(atPath: url.path) || !FileManager.default.isWritableFile(atPath: url.path) {
                 return false
             }
         }
         return true
     }
-}
 
-extension String {
-    func matches(regex: String) -> Bool {
-        return self.range(of: regex, options: .regularExpression) != nil
-    }
-}
-
-class ToggleView: NSView {
-    private var titleField: NSTextField!
-    private var toggleSwitch: NSSwitch!
-
-    init(title: String, isOn: Bool, target: AnyObject?, action: Selector?) {
-        super.init(frame: NSRect(x: 0, y: 0, width: 250, height: 30))
-
-        titleField = NSTextField(labelWithString: title)
-        titleField.font = NSFont.systemFont(ofSize: 13)
-        titleField.textColor = .labelColor
-        titleField.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(titleField)
-
-        toggleSwitch = NSSwitch()
-        toggleSwitch.translatesAutoresizingMaskIntoConstraints = false
-        toggleSwitch.target = target
-        toggleSwitch.action = action
-        toggleSwitch.state = isOn ? .on : .off
-        addSubview(toggleSwitch)
-
-        NSLayoutConstraint.activate([
-            titleField.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
-            titleField.centerYAnchor.constraint(equalTo: centerYAnchor),
-            toggleSwitch.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
-            toggleSwitch.centerYAnchor.constraint(equalTo: centerYAnchor)
-        ])
+    private func createAndStoreBookmarks() {
+        let desktopURL = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first!
+        let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        
+        do {
+            desktopBookmark = try desktopURL.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil)
+            documentsBookmark = try documentsURL.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil)
+            
+            UserDefaults.standard.set(desktopBookmark, forKey: "DesktopBookmark")
+            UserDefaults.standard.set(documentsBookmark, forKey: "DocumentsBookmark")
+            
+            log("Bookmarks created and stored successfully")
+        } catch {
+            log("Error creating bookmarks: \(error.localizedDescription)")
+        }
     }
 
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
+    private func resolveBookmarks() -> [URL] {
+            var urls: [URL] = []
+            
+            if let desktopBookmark = UserDefaults.standard.data(forKey: "DesktopBookmark"),
+               let documentsBookmark = UserDefaults.standard.data(forKey: "DocumentsBookmark") {
+               do {
+                   var isStale = false
+                   let desktopURL = try URL(resolvingBookmarkData: desktopBookmark, options: .withSecurityScope, relativeTo: nil, bookmarkDataIsStale: &isStale)
+                   urls.append(desktopURL)
+                   
+                   isStale = false
+                   let documentsURL = try URL(resolvingBookmarkData: documentsBookmark, options: .withSecurityScope, relativeTo: nil, bookmarkDataIsStale: &isStale)
+                   urls.append(documentsURL)
+                   
+                   log("Bookmarks resolved successfully")
+               } catch {
+                   log("Error resolving bookmarks: \(error.localizedDescription)")
+               }
+           }
+           
+           return urls
+        }
     }
-}
+
+    extension String {
+        func matches(regex: String) -> Bool {
+            return self.range(of: regex, options: .regularExpression) != nil
+        }
+    }
+
+    class ToggleView: NSView {
+        private var titleField: NSTextField!
+        private var toggleSwitch: NSSwitch!
+
+        init(title: String, isOn: Bool, target: AnyObject?, action: Selector?) {
+            super.init(frame: NSRect(x: 0, y: 0, width: 250, height: 30))
+
+            titleField = NSTextField(labelWithString: title)
+            titleField.font = NSFont.systemFont(ofSize: 13)
+            titleField.textColor = .labelColor
+            titleField.translatesAutoresizingMaskIntoConstraints = false
+            addSubview(titleField)
+
+            toggleSwitch = NSSwitch()
+            toggleSwitch.translatesAutoresizingMaskIntoConstraints = false
+            toggleSwitch.target = target
+            toggleSwitch.action = action
+            toggleSwitch.state = isOn ? .on : .off
+            addSubview(toggleSwitch)
+
+            NSLayoutConstraint.activate([
+                titleField.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
+                titleField.centerYAnchor.constraint(equalTo: centerYAnchor),
+                toggleSwitch.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
+                toggleSwitch.centerYAnchor.constraint(equalTo: centerYAnchor)
+            ])
+        }
+
+        required init?(coder: NSCoder) {
+            fatalError("init(coder:) has not been implemented")
+        }
+    }
