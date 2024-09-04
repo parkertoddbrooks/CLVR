@@ -2,3 +2,7 @@
 .git-ignore/
 _git-ignore/
 cli-dump/
+*git_ignore*
+*git-ignore*
+*cli-dump*
+*cli_dump*
