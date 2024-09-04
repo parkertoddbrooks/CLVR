@@ -12,5 +12,7 @@
 	<string>This app needs access to your Desktop folder to monitor for new files.</string>
 	<key>NSDocumentsFolderUsageDescription</key>
 	<string>This app needs access to your Documents folder to monitor for new files.</string>
+	<key>NSApplicationSupportDirectory</key>
+	<string>~/Library/Application Support/DuplicateTimestampMenuBar</string>
 </dict>
 </plist>
