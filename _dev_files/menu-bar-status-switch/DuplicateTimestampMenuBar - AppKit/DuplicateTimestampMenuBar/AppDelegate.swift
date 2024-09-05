@@ -1,6 +1,9 @@
 import Cocoa
 import UserNotifications
 
+/// Defines different log levels for the application.
+///
+/// Each case represents a severity level for logging with a corresponding string value.
 enum LogLevel: String {
     case debug = "DEBUG"
     case info = "INFO"
@@ -8,6 +11,15 @@ enum LogLevel: String {
     case error = "ERROR"
 }
 
+/// Logs a message with timestamp, log level, and source information to a file.
+///
+/// - Parameters:
+///   - message: The message to be logged.
+///   - level: The severity level of the log message. Defaults to .info.
+///   - fileName: The name of the file where the log was called. Defaults to the current file.
+///   - lineNumber: The line number where the log was called. Defaults to the current line.
+///   - functionName: The name of the function where the log was called. Defaults to the current function.
+/// - Throws: An error if there's a problem writing to the log file.
 func log(_ message: String, level: LogLevel = .info, fileName: String = #file, lineNumber: Int = #line, functionName: String = #function) {
     let dateFormatter = DateFormatter()
     dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
@@ -55,11 +67,21 @@ func log(_ message: String, level: LogLevel = .info, fileName: String = #file, l
     }
 }
     
+/// A class that watches for file system events in specified paths.
+///
+/// This class uses the FSEvents API to monitor changes in the file system and call a provided callback when changes occur.
+///
+/// - Note: This class automatically starts watching upon initialization and stops when deinitialized.
 class FileSystemWatcher {
     private var stream: FSEventStreamRef?
     private let callback: (String) -> Void
     private let queue: DispatchQueue
 
+    /// Initializes a new FileSystemWatcher instance.
+    ///
+    /// - Parameters:
+    ///   - paths: An array of file system paths to watch for changes.
+    ///   - callback: A closure that will be called with the path of any changed file or directory.
     init(paths: [String], callback: @escaping (String) -> Void) {
         self.callback = callback
         self.queue = DispatchQueue(label: "com.yourapp.fseventstream", qos: .utility)
@@ -97,6 +119,7 @@ class FileSystemWatcher {
         }
     }
 
+    /// Stops watching and releases resources when the instance is deinitialized.
     deinit {
         if let stream = stream {
             FSEventStreamStop(stream)
@@ -106,37 +129,80 @@ class FileSystemWatcher {
     }
 }
 
-class AppDelegate: NSObject, NSApplicationDelegate {
+/// The main application delegate class responsible for managing the app's lifecycle and core functionality.
+///
+/// This class handles the setup of the status bar item, menu, file system watching,
+/// and manages the app's enabled/disabled state.
+class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
+    /// Shared instance of the AppDelegate for global access.
     static var shared: AppDelegate!
+    
+    /// The status item displayed in the macOS menu bar.
     var statusItem: NSStatusItem?
-    var isEnabled = false {
+    
+    /// Indicates whether the app's main functionality is enabled.
+    /// When changed, it updates the status item icon and saves the state to UserDefaults.
+    var isEnabled: Bool = true {
         didSet {
             updateStatusItemIcon()
-            UserDefaults.standard.set(isEnabled, forKey: "IsEnabled")
+            updateToggleSwitch()
+            if isEnabled {
+                startWatching()
+            } else {
+                stopWatching()
+            }
         }
     }
+    
+    /// The file system watcher responsible for detecting file changes.
     private var fileSystemWatcher: FileSystemWatcher?
+    
+    /// Indicates whether the app is in debug mode.
     var isDebugMode = false
+    
+    /// The debug window for displaying additional information when in debug mode.
     var debugWindow: NSWindow?
+    
+    /// Security-scoped bookmark for the Desktop folder.
     private var desktopBookmark: Data?
+    
+    /// Security-scoped bookmark for the Documents folder.
     private var documentsBookmark: Data?
+    
+    /// Dictionary to store previous file information.
     private var previousFiles: [String: [String]] = [:]
+    
+    /// Set of recently processed files to prevent duplicate processing.
     private var recentlyProcessedFiles: Set<String> = []
+    
+    /// The ToggleView instance for the menu item.
+    private var toggleView: ToggleView?
 
+    /// Initializes the AppDelegate.
     override init() {
         super.init()
         log("AppDelegate initialized")
     }
 
+    /// Called when the application finishes launching.
+    ///
+    /// - Parameter notification: The notification object.
     func applicationDidFinishLaunching(_ notification: Notification) {
         AppDelegate.shared = self
         print("Application did finish launching")
         
         testLogging()
         
+        // Always start in the "on" state
+        isEnabled = true
+        
         setupStatusItem()
         setupMenu()
-        checkInitialState()
+        
+        log("Initial state: enabled")
+        
+        // Start watching since we're always starting in the "on" state
+        startWatching()
         
         if let savedBookmark = UserDefaults.standard.data(forKey: "DocumentsBookmark") {
             documentsBookmark = savedBookmark
@@ -145,8 +211,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if !verifyFolderAccess() {
             log("No access to watched folders, requesting permission")
             requestPermission()
-        } else if isEnabled {
-            startWatching()
         }
         
         testLogWriting()
@@ -154,6 +218,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         log("Application launched successfully", level: .info)
     }
 
+    /// Sets up the status item in the menu bar.
     func setupStatusItem() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = statusItem?.button {
@@ -161,15 +226,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
             button.wantsLayer = true
         }
+        updateStatusItemIcon()
         log("Status item set up")
     }
 
+    /// Sets up the menu for the status item.
     func setupMenu() {
         let menu = NSMenu()
+        menu.delegate = self
 
         let customMenuItem = NSMenuItem()
-        let customView = ToggleView(title: "Duplicate + Timestamp", isOn: isEnabled, target: self, action: #selector(toggleFeature))
-        customMenuItem.view = customView
+        toggleView = ToggleView(title: "Duplicate + Timestamp", isOn: true, target: self, action: #selector(toggleFeature))
+        customMenuItem.view = toggleView
         menu.addItem(customMenuItem)
 
         menu.addItem(NSMenuItem.separator())
@@ -186,21 +254,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         log("Menu set up")
     }
 
-    func checkInitialState() {
-        isEnabled = UserDefaults.standard.bool(forKey: "IsEnabled")
-        log("Initial state: \(isEnabled ? "enabled" : "disabled")")
-        updateStatusItemIcon()
-        if isEnabled {
-            startWatching()
-        }
-    }
-
+    /// Called when the application is about to terminate.
+    ///
+    /// - Parameter notification: The notification object.
     func applicationWillTerminate(_ notification: Notification) {
         log("Application will terminate")
         stopWatching()
         stopAccessingSecurityScopedResources()
     }
 
+    /// Sets up the debug window for displaying additional information.
     func setupDebugWindow() {
         log("Setting up debug window")
         debugWindow = NSWindow(contentRect: NSRect(x: 100, y: 100, width: 300, height: 200),
@@ -216,6 +279,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         debugWindow?.contentView?.addSubview(textView)
     }
 
+    /// Toggles the debug mode on and off.
     @objc func toggleDebugMode() {
         isDebugMode = !isDebugMode
         log("Debug mode \(isDebugMode ? "enabled" : "disabled")")
@@ -229,23 +293,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// Toggles the menu when the status item is clicked.
     @objc func toggleMenu() {
         log("Menu toggled")
         statusItem?.button?.performClick(nil)
     }
 
+    /// Toggles the main feature on and off.
+    ///
+    /// - Parameter sender: The NSSwitch that triggered the action.
     @objc func toggleFeature(_ sender: NSSwitch) {
         log("Toggle feature called")
         isEnabled = sender.state == .on
         log("Feature toggled: \(isEnabled ? "enabled" : "disabled")")
-        updateStatusItemIcon()
-        if isEnabled {
-            startWatching()
-        } else {
-            stopWatching()
-        }
     }
 
+    /// Starts watching for file system events.
     func startWatching() {
         log("Starting file watching")
         let watchedPaths = getWatchedPaths()
@@ -256,11 +319,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         log("FileSystemWatcher initialized")
     }
 
+    /// Stops watching for file system events.
     func stopWatching() {
         log("Stopping file watching")
         fileSystemWatcher = nil
     }
 
+    /// Retrieves the paths to be watched for file system events.
+    ///
+    /// - Returns: An array of string paths to be watched.
     func getWatchedPaths() -> [String] {
         var paths: [String] = []
         
@@ -278,6 +345,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         return paths
     }
 
+    /// Resolves the security-scoped bookmark for the Documents folder.
+    ///
+    /// - Returns: The URL of the Documents folder, or nil if resolution fails.
     private func resolveDocumentsBookmark() -> URL? {
         guard let bookmark = documentsBookmark else {
             log("No bookmark found for Documents", level: .warning)
@@ -306,6 +376,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// Requests permission to access the Desktop and Documents folders.
     func requestPermission() {
         log("Requesting permission for Desktop and Documents folders")
         
@@ -326,6 +397,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// Requests access to a specific folder.
+    ///
+    /// - Parameters:
+    ///   - url: The URL of the folder to request access for.
+    ///   - name: The name of the folder (e.g., "Desktop" or "Documents").
+    /// - Returns: A boolean indicating whether access was granted.
     private func requestFolderAccess(for url: URL, name: String) -> Bool {
         let openPanel = NSOpenPanel()
         openPanel.canChooseDirectories = true
@@ -355,12 +432,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// Stops accessing all security-scoped resources.
     private func stopAccessingSecurityScopedResources() {
         if let documentsURL = resolveDocumentsBookmark() {
             documentsURL.stopAccessingSecurityScopedResource()
         }
     }
 
+    /// Handles file system events.
+    ///
+    /// - Parameter path: The path of the file that triggered the event.
     func handleFileSystemEvent(path: String) {
         log("File system event detected: \(path)")
         
@@ -390,6 +471,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// Determines if a file should be renamed based on its filename.
+    ///
+    /// - Parameter filename: The name of the file to check.
+    /// - Returns: A boolean indicating whether the file should be renamed.
     func shouldRenameFile(_ filename: String) -> Bool {
         let name = (filename as NSString).deletingPathExtension.lowercased()
         let hasCopySuffix = name.hasSuffix(" copy")
@@ -401,6 +486,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         return hasCopySuffix && !hasTimestamp
     }
 
+    /// Renames a file by adding a timestamp to its name.
+    ///
+    /// - Parameter path: The path of the file to rename.
     func renameFile(at path: String) {
         log("Attempting to rename file: \(path)")
         let url = URL(fileURLWithPath: path)
@@ -563,6 +651,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         print("Logging test completed")
     }
+
+    // MARK: - NSMenuDelegate
+
+    func menuWillOpen(_ menu: NSMenu) {
+        updateToggleSwitch()
+    }
+
+    func menuDidClose(_ menu: NSMenu) {
+        updateToggleSwitch()
+    }
+
+    // MARK: - ToggleView updates
+
+    func updateToggleSwitch() {
+        toggleView?.updateToggleState(isOn: isEnabled)
+    }
 }
 
 extension String {
@@ -574,8 +678,10 @@ extension String {
 class ToggleView: NSView {
     private var titleField: NSTextField!
     private var toggleSwitch: NSSwitch!
+    private var isOn: Bool
 
     init(title: String, isOn: Bool, target: AnyObject?, action: Selector?) {
+        self.isOn = isOn
         super.init(frame: NSRect(x: 0, y: 0, width: 250, height: 30))
 
         titleField = NSTextField(labelWithString: title)
@@ -588,7 +694,7 @@ class ToggleView: NSView {
         toggleSwitch.translatesAutoresizingMaskIntoConstraints = false
         toggleSwitch.target = target
         toggleSwitch.action = action
-        toggleSwitch.state = isOn ? .on : .off
+        updateToggleState(isOn: isOn)
         addSubview(toggleSwitch)
 
         NSLayoutConstraint.activate([
@@ -601,6 +707,17 @@ class ToggleView: NSView {
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    func updateToggleState(isOn: Bool) {
+        self.isOn = isOn
+        toggleSwitch.state = isOn ? .on : .off
+        needsDisplay = true
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        super.draw(dirtyRect)
+        toggleSwitch.state = isOn ? .on : .off
     }
 }
 
