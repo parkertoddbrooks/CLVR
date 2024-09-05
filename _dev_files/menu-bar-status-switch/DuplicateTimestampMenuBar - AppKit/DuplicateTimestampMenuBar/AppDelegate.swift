@@ -236,7 +236,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.delegate = self
 
         let customMenuItem = NSMenuItem()
-        toggleView = ToggleView(title: "Duplicate + Timestamp", isOn: true, target: self, action: #selector(toggleFeature))
+        toggleView = ToggleView(title: "Duplicate + Timestamp", isOn: isEnabled, target: self, action: #selector(toggleFeature))
         customMenuItem.view = toggleView
         menu.addItem(customMenuItem)
 
@@ -306,6 +306,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         log("Toggle feature called")
         isEnabled = sender.state == .on
         log("Feature toggled: \(isEnabled ? "enabled" : "disabled")")
+        
+        animateStatusItemIcon()
     }
 
     /// Starts watching for file system events.
@@ -659,27 +661,91 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func menuDidClose(_ menu: NSMenu) {
-        updateToggleSwitch()
+        // No need to update here
     }
 
     // MARK: - ToggleView updates
 
     func updateToggleSwitch() {
-        toggleView?.updateToggleState(isOn: isEnabled)
+        toggleView?.isOn = isEnabled
+    }
+
+    /// Animates the status item icon with a wiggle effect.
+    ///
+    /// This function creates and applies a horizontal translation animation to the status item's button,
+    /// creating a wiggle effect. The animation is a sequence of small left and right movements,
+    /// gradually decreasing in magnitude.
+    ///
+    /// - Note: This function does nothing if the status item or its button is not available.
+    ///
+    /// - Important: This function assumes that the status item's button has a layer. If the layer
+    ///   is not available, the animation will not be applied.
+    func animateStatusItemIcon() {
+        guard let button = statusItem?.button else { return }
+        
+        let animation = CAKeyframeAnimation(keyPath: "transform.translation.x")
+        animation.values = [-1.5, 1.5, 0, -1.5, 1.5, 0]
+        animation.duration = 0.45
+        animation.calculationMode = .linear
+        
+        button.layer?.add(animation, forKey: "doubleWiggleAnimation")
     }
 }
 
+/// Checks if the string matches a given regular expression pattern.
+    ///
+    /// This method uses Swift's built-in regular expression support to determine
+    /// if the string contains a match for the provided regex pattern.
+    ///
+    /// - Parameter regex: A string representing the regular expression pattern to match against.
+    ///
+    /// - Returns: A boolean value indicating whether the string matches the regex pattern.
+    ///   Returns `true` if a match is found, `false` otherwise.
+    ///
+    /// - Note: This method uses the `.regularExpression` option for pattern matching,
+    ///   which means the `regex` parameter should be a valid regular expression pattern.
+    ///
+    /// - Important: This method does not throw exceptions for invalid regex patterns.
+    ///   If an invalid pattern is provided, the method will likely return `false`.
 extension String {
+    
     func matches(regex: String) -> Bool {
         return self.range(of: regex, options: .regularExpression) != nil
     }
 }
 
+/// A custom NSView subclass that represents a toggle switch with a title.
+///
+/// This view combines a text label and an NSSwitch to create a toggleable control
+/// with a descriptive title. It's designed for use in menu items or other UI elements
+/// where a labeled on/off switch is needed.
+///
+/// - Note: This view uses Auto Layout for its internal layout.
 class ToggleView: NSView {
+    /// The text field displaying the titlof the toggle.
     private var titleField: NSTextField!
+    
+    /// The switch control for toggling the state.
     private var toggleSwitch: NSSwitch!
-    private var isOn: Bool
+    
+    /// The current state of the toggle.
+    ///
+    /// Setting this property updates the visual state of the switch.
+    var isOn: Bool {
+        didSet {
+            updateToggleState()
+        }
+    }
 
+    /// Initializes a new ToggleView with the specified title, initial state, target, and action.
+    ///
+    /// - Parameters:
+    ///   - title: The string to display as the label for the toggle.
+    ///   - isOn: The initial state of the toggle (true for on, false for off).
+    ///   - target: The target object that will receive action messages when the switch is toggled.
+    ///   - action: The action method to be called on the target when the switch is toggled.
+    ///
+    /// - Note: The view is initialized with a fixed size of 250x30 points.
     init(title: String, isOn: Bool, target: AnyObject?, action: Selector?) {
         self.isOn = isOn
         super.init(frame: NSRect(x: 0, y: 0, width: 250, height: 30))
@@ -691,10 +757,9 @@ class ToggleView: NSView {
         addSubview(titleField)
 
         toggleSwitch = NSSwitch()
-        toggleSwitch.translatesAutoresizingMaskIntoConstraints = false
         toggleSwitch.target = target
         toggleSwitch.action = action
-        updateToggleState(isOn: isOn)
+        toggleSwitch.translatesAutoresizingMaskIntoConstraints = false
         addSubview(toggleSwitch)
 
         NSLayoutConstraint.activate([
@@ -703,25 +768,45 @@ class ToggleView: NSView {
             toggleSwitch.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
             toggleSwitch.centerYAnchor.constraint(equalTo: centerYAnchor)
         ])
+
+        updateToggleState()
     }
 
+    /// Required initializer for NSCoder. Not implemented for this class.
+    ///
+    /// - Parameter coder: An NSCoder instance.
+    /// - Throws: A fatal error if this initializer is called.
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
 
-    func updateToggleState(isOn: Bool) {
-        self.isOn = isOn
+    /// Updates the visual state of the toggle switch to match the `isOn` property.
+    private func updateToggleState() {
         toggleSwitch.state = isOn ? .on : .off
-        needsDisplay = true
     }
 
-    override func draw(_ dirtyRect: NSRect) {
-        super.draw(dirtyRect)
-        toggleSwitch.state = isOn ? .on : .off
+    /// Called when the view is moved to a window.
+    ///
+    /// This method ensures that the toggle state is updated when the view becomes visible.
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        updateToggleState()
     }
 }
 
 extension Array where Element: Hashable {
+    /// Removes duplicate elements from the array while preserving the original order.
+    ///
+    /// This method creates a new array containing only the unique elements from the original array,
+    /// maintaining the order in which they first appear.
+    ///
+    /// - Complexity: O(n), where n is the length of the array.
+    ///
+    /// - Returns: A new array containing only the unique elements from the original array,
+    ///            preserving their original order.
+    ///
+    /// - Note: This method uses a dictionary to keep track of elements that have already been seen,
+    ///         which allows for efficient lookup and removal of duplicates.
     func removingDuplicates() -> [Element] {
         var addedDict = [Element: Bool]()
         return filter {
