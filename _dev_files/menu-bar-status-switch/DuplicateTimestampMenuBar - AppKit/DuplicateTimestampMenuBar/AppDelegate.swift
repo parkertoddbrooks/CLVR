@@ -56,56 +56,53 @@ func log(_ message: String, level: LogLevel = .info, fileName: String = #file, l
 }
     
 class FileSystemWatcher {
-    private var sources: [DispatchSourceFileSystemObject] = []
+    private var stream: FSEventStreamRef?
     private let callback: (String) -> Void
     private let queue: DispatchQueue
 
-    init?(paths: [String], callback: @escaping (String) -> Void) {
+    init(paths: [String], callback: @escaping (String) -> Void) {
         self.callback = callback
-        self.queue = DispatchQueue(label: "com.example.FileSystemWatcher", qos: .utility)
-
-        var success = false
-        for path in paths {
-            log("Setting up watcher for path: \(path)")
-            let fd = open(path, O_EVTONLY)
-            if fd < 0 {
-                log("Error: Failed to open file descriptor for path: \(path)", level: .error)
-                continue
-            }
-            let source = DispatchSource.makeFileSystemObjectSource(fileDescriptor: fd, eventMask: [.write, .link, .rename, .attrib], queue: queue)
-            source.setEventHandler { [weak self] in
-                let flags = source.data
-                self?.handleFileSystemEvent(flags: flags, path: path)
-            }
-            source.setCancelHandler {
-                close(fd)
-            }
-            source.resume()
-            sources.append(source)
-            log("Watcher set up for path: \(path)")
-            success = true
-        }
-
-        if !success {
-            log("Failed to set up any watchers", level: .error)
-            return nil
-        }
-    }
-
-    private func handleFileSystemEvent(flags: DispatchSource.FileSystemEvent, path: String) {
-        log("File system event detected: \(flags) on path: \(path)")
-        if flags.contains(.write) || flags.contains(.link) || flags.contains(.rename) || flags.contains(.attrib) {
-            DispatchQueue.main.async {
-                self.callback(path)
-            }
+        self.queue = DispatchQueue(label: "com.yourapp.fseventstream", qos: .utility)
+        
+        var context = FSEventStreamContext(
+            version: 0,
+            info: Unmanaged.passUnretained(self).toOpaque(),
+            retain: nil,
+            release: nil,
+            copyDescription: nil
+        )
+        
+        let flags = UInt32(kFSEventStreamCreateFlagUseCFTypes | kFSEventStreamCreateFlagFileEvents)
+        
+        stream = FSEventStreamCreate(
+            kCFAllocatorDefault,
+            { (_, info, numEvents, eventPaths, _, _) in
+                guard let info = info else { return }
+                let watcher = Unmanaged<FileSystemWatcher>.fromOpaque(info).takeUnretainedValue()
+                let paths = unsafeBitCast(eventPaths, to: NSArray.self) as! [String]
+                for i in 0..<numEvents {
+                    watcher.callback(paths[Int(i)])
+                }
+            },
+            &context,
+            paths as CFArray,
+            FSEventStreamEventId(kFSEventStreamEventIdSinceNow),
+            0,
+            flags
+        )
+        
+        if let stream = stream {
+            FSEventStreamSetDispatchQueue(stream, queue)
+            FSEventStreamStart(stream)
         }
     }
 
-    func stopWatching() {
-        for source in sources {
-            source.cancel()
+    deinit {
+        if let stream = stream {
+            FSEventStreamStop(stream)
+            FSEventStreamInvalidate(stream)
+            FSEventStreamRelease(stream)
         }
-        sources.removeAll()
     }
 }
 
@@ -123,6 +120,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var debugWindow: NSWindow?
     private var desktopBookmark: Data?
     private var documentsBookmark: Data?
+    private var previousFiles: [String: [String]] = [:]
+    private var recentlyProcessedFiles: Set<String> = []
 
     override init() {
         super.init()
@@ -245,104 +244,130 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func startWatching() {
         log("Starting file watching")
-        if !verifyFolderAccess() {
-            log("No access to watched folders, requesting permission")
-            requestPermission()
-            return
-        }
-        
         let watchedPaths = getWatchedPaths()
-        
-        if watchedPaths.isEmpty {
-            log("No watched paths available. Unable to start file watching.", level: .error)
-            sendNotification(title: "DuplicateFileManager", message: "No folders to watch. Please check settings.")
-            return
+        log("Watched paths: \(watchedPaths)")
+        fileSystemWatcher = FileSystemWatcher(paths: watchedPaths) { [weak self] path in
+            self?.handleFileSystemEvent(path: path)
         }
-        
-        fileSystemWatcher = FileSystemWatcher(paths: watchedPaths, callback: { [weak self] path in
-            log("File system event detected on path: \(path)")
-            self?.checkForNewFiles(in: path)
-        })
-        
-        if fileSystemWatcher == nil {
-            log("Failed to initialize FileSystemWatcher", level: .error)
-            sendNotification(title: "DuplicateFileManager", message: "Failed to start file watching")
-        } else {
-            log("FileSystemWatcher initialized successfully")
-            sendNotification(title: "DuplicateFileManager", message: "File watching started")
-        }
+        log("FileSystemWatcher initialized")
     }
 
     func stopWatching() {
         log("Stopping file watching")
-        fileSystemWatcher?.stopWatching()
         fileSystemWatcher = nil
-        sendNotification(title: "DuplicateFileManager", message: "File watching stopped")
     }
-    
+
     func getWatchedPaths() -> [String] {
         var paths: [String] = []
         
-        if let desktopURL = UserDefaults.standard.url(forKey: "SelectedDesktopURL") {
+        if let desktopURL = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first {
             paths.append(desktopURL.path)
             log("Desktop path: \(desktopURL.path)")
-        } else {
-            log("No saved Desktop path")
         }
         
-        if let documentsURL = UserDefaults.standard.url(forKey: "SelectedDocumentsURL") {
+        if let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
             paths.append(documentsURL.path)
             log("Documents path: \(documentsURL.path)")
-        } else {
-            log("No saved Documents path")
         }
         
-        let uniquePaths = paths.removingDuplicates()
-        log("Watched paths: \(uniquePaths)")
-        return uniquePaths
+        log("Watched paths: \(paths)")
+        return paths
     }
 
-    private func checkForNewFiles(in directory: String) {
-        log("Checking for new files in directory: \(directory)")
-        let fileManager = FileManager.default
-        do {
-            let contents = try fileManager.contentsOfDirectory(atPath: directory)
-            let newFiles = contents.filter { fileName in
-                fileName.lowercased().contains("copy") || fileName.contains(" 2.")
-            }
+    func handleFileSystemEvent(path: String) {
+        log("File system event detected: \(path)")
+        
+        // Check if this file was recently processed
+        if recentlyProcessedFiles.contains(path) {
+            log("File was recently processed, skipping: \(path)")
+            return
+        }
+        
+        let url = URL(fileURLWithPath: path)
+        let filename = url.lastPathComponent
+        
+        log("Checking if file should be renamed: \(filename)")
+        if shouldRenameFile(filename) {
+            log("File should be renamed, attempting to rename: \(filename)")
+            renameFile(at: path)
             
-            for fileName in newFiles {
-                let fullPath = (directory as NSString).appendingPathComponent(fileName)
-                log("New copy file detected: \(fullPath)")
-                renameFile(at: fullPath)
+            // Add the file to the recently processed set
+            recentlyProcessedFiles.insert(path)
+            
+            // Remove the file from the set after a short delay
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+                self?.recentlyProcessedFiles.remove(path)
             }
-        } catch {
-            log("Error checking directory contents: \(error)", level: .error)
+        } else {
+            log("File does not need to be renamed: \(filename)")
         }
     }
 
-    public func renameFile(at file: String) {
-        log("Attempting to rename file: \(file)")
+    func shouldRenameFile(_ filename: String) -> Bool {
+        let name = (filename as NSString).deletingPathExtension.lowercased()
+        let hasCopySuffix = name.hasSuffix(" copy")
+        let hasTimestamp = name.matches(regex: #"-copy-\d{4}-\d{2}-\d{2}-\d{6}$"#)
+        
+        log("Checking file: \(filename), hasCopySuffix: \(hasCopySuffix), hasTimestamp: \(hasTimestamp)")
+        
+        // Only rename if it has " copy" suffix and doesn't already have our timestamp
+        return hasCopySuffix && !hasTimestamp
+    }
 
-        let url = URL(fileURLWithPath: file)
-        let dir = url.deletingLastPathComponent().path
+    func renameFile(at path: String) {
+        log("Attempting to rename file: \(path)")
+        let url = URL(fileURLWithPath: path)
+        let filename = url.lastPathComponent
+        
+        // Check if the file actually needs renaming
+        guard shouldRenameFile(filename) else {
+            log("File does not need renaming: \(filename)")
+            return
+        }
+        
+        let directory = url.deletingLastPathComponent()
         let fileExtension = url.pathExtension
-        let name = url.deletingPathExtension().lastPathComponent
+        var name = (filename as NSString).deletingPathExtension
+
+        log("File details - Name: \(name), Extension: \(fileExtension)")
 
         let timestamp = formattedTimestamp()
-        let newName = "\(name)-\(timestamp).\(fileExtension)"
+        var newName: String
 
-        let newPath = (dir as NSString).appendingPathComponent(newName)
-        
+        if name.lowercased().hasSuffix(" copy") {
+            name = (name as NSString).substring(to: name.count - 5)
+            newName = "\(name)-copy-\(timestamp).\(fileExtension)"
+        } else {
+            // Extract existing timestamps
+            let regex = try! NSRegularExpression(pattern: #"-copy-\d{4}-\d{2}-\d{2}-\d{6}(--\d{4}-\d{2}-\d{2}-\d{6})*$"#)
+            if let match = regex.firstMatch(in: name, options: [], range: NSRange(location: 0, length: name.utf16.count)) {
+                let timestampStart = match.range.lowerBound
+                name = (name as NSString).substring(to: timestampStart)
+            }
+            newName = "\(name)-copy-\(timestamp).\(fileExtension)"
+        }
+
+        log("New name: \(newName)")
+
+        var newPath = directory.appendingPathComponent(newName).path
+
+        // Check if the new filename already exists
+        var counter = 1
+        while FileManager.default.fileExists(atPath: newPath) {
+            newName = "\(name)-copy-\(timestamp) (\(counter)).\(fileExtension)"
+            newPath = directory.appendingPathComponent(newName).path
+            counter += 1
+        }
+
         do {
-            try FileManager.default.moveItem(atPath: file, toPath: newPath)
-            log("Successfully renamed: \(file) to \(newPath)")
+            try FileManager.default.moveItem(atPath: path, toPath: newPath)
+            log("Successfully renamed: \(path) to \(newPath)")
         } catch {
             log("Error renaming file: \(error.localizedDescription)", level: .error)
         }
     }
 
-    public func formattedTimestamp() -> String {
+    private func formattedTimestamp() -> String {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd-HHmmss"
         return dateFormatter.string(from: Date())
