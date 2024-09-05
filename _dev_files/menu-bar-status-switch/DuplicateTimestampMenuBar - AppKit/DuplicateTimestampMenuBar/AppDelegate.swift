@@ -539,6 +539,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         do {
             try FileManager.default.moveItem(atPath: path, toPath: newPath)
             log("Successfully renamed: \(path) to \(newPath)")
+            
+            // Trigger the wiggle animation after successful renaming
+            DispatchQueue.main.async { [weak self] in
+                self?.animateStatusItemIcon()
+            }
         } catch {
             log("Error renaming file: \(error.localizedDescription)", level: .error)
         }
