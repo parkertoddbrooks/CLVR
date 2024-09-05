@@ -138,6 +138,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         setupMenu()
         checkInitialState()
         
+        if let savedBookmark = UserDefaults.standard.data(forKey: "DocumentsBookmark") {
+            documentsBookmark = savedBookmark
+        }
+        
         if !verifyFolderAccess() {
             log("No access to watched folders, requesting permission")
             requestPermission()
@@ -194,7 +198,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         log("Application will terminate")
         stopWatching()
-        stopAccessingSecurityScopedResources(for: resolveBookmarks())
+        stopAccessingSecurityScopedResources()
     }
 
     func setupDebugWindow() {
@@ -265,13 +269,96 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             log("Desktop path: \(desktopURL.path)")
         }
         
-        if let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
+        if let documentsURL = resolveDocumentsBookmark() {
             paths.append(documentsURL.path)
             log("Documents path: \(documentsURL.path)")
         }
         
         log("Watched paths: \(paths)")
         return paths
+    }
+
+    private func resolveDocumentsBookmark() -> URL? {
+        guard let bookmark = documentsBookmark else {
+            log("No bookmark found for Documents", level: .warning)
+            return nil
+        }
+        
+        do {
+            var isStale = false
+            let url = try URL(resolvingBookmarkData: bookmark, options: .withSecurityScope, relativeTo: nil, bookmarkDataIsStale: &isStale)
+            
+            if isStale {
+                log("Bookmark for Documents is stale", level: .warning)
+                // Here you might want to request new permission and create a new bookmark
+                return nil
+            }
+            
+            if url.startAccessingSecurityScopedResource() {
+                return url
+            } else {
+                log("Failed to access security-scoped resource for Documents", level: .error)
+                return nil
+            }
+        } catch {
+            log("Error resolving bookmark for Documents: \(error.localizedDescription)", level: .error)
+            return nil
+        }
+    }
+
+    func requestPermission() {
+        log("Requesting permission for Desktop and Documents folders")
+        
+        let desktopAccess = requestFolderAccess(for: FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Desktop"), name: "Desktop")
+        let documentsAccess = requestFolderAccess(for: FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Documents"), name: "Documents")
+        
+        if desktopAccess && documentsAccess {
+            if verifyFolderAccess() {
+                log("Folder access verified, starting file watching")
+                startWatching()
+            } else {
+                log("Folder access verification failed", level: .error)
+                showAccessDeniedAlert()
+            }
+        } else {
+            log("User didn't select both folders. Desktop: \(desktopAccess), Documents: \(documentsAccess)", level: .warning)
+            showAccessDeniedAlert()
+        }
+    }
+
+    private func requestFolderAccess(for url: URL, name: String) -> Bool {
+        let openPanel = NSOpenPanel()
+        openPanel.canChooseDirectories = true
+        openPanel.canChooseFiles = false
+        openPanel.allowsMultipleSelection = false
+        openPanel.message = "Please select your \(name) folder"
+        openPanel.directoryURL = url
+        openPanel.prompt = "Select \(name)"
+        
+        if openPanel.runModal() == .OK, let selectedURL = openPanel.url {
+            if name == "Documents" {
+                do {
+                    let bookmark = try selectedURL.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil)
+                    documentsBookmark = bookmark
+                    UserDefaults.standard.set(bookmark, forKey: "DocumentsBookmark")
+                    log("Documents folder selected and bookmark created: \(selectedURL.path)")
+                } catch {
+                    log("Error creating bookmark for Documents: \(error.localizedDescription)", level: .error)
+                    return false
+                }
+            }
+            log("\(name) folder selected: \(selectedURL.path)")
+            return true
+        } else {
+            log("No \(name) folder selected")
+            return false
+        }
+    }
+
+    private func stopAccessingSecurityScopedResources() {
+        if let documentsURL = resolveDocumentsBookmark() {
+            documentsURL.stopAccessingSecurityScopedResource()
+        }
     }
 
     func handleFileSystemEvent(path: String) {
@@ -398,69 +485,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    func requestFolderAccess(for url: URL, name: String) -> Bool {
-        let openPanel = NSOpenPanel()
-        openPanel.canChooseDirectories = true
-        openPanel.canChooseFiles = false
-        openPanel.allowsMultipleSelection = false
-        openPanel.message = "Please select your \(name) folder"
-        openPanel.directoryURL = url
-        openPanel.prompt = "Select \(name)"
-        
-        if openPanel.runModal() == .OK, let selectedURL = openPanel.url {
-            UserDefaults.standard.set(selectedURL, forKey: "Selected\(name)URL")
-            log("\(name) folder selected: \(selectedURL.path)")
-            return true
-        } else {
-            log("No \(name) folder selected")
-            return false
-        }
-    }
-
-    func showAccessDeniedAlert() {
-        log("Failed to gain access to watched folders", level: .error)
-        let failureAlert = NSAlert()
-        failureAlert.messageText = "Access Denied"
-        failureAlert.informativeText = "Failed to gain access to the Desktop and Documents folders. Please check your system preferences and try again."
-        failureAlert.alertStyle = .critical
-        failureAlert.runModal()
-    }
-    
-    func requestPermission() {
-        log("Requesting permission for Desktop and Documents folders")
-        
-        let desktopAccess = requestFolderAccess(for: FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Desktop"), name: "Desktop")
-        let documentsAccess = requestFolderAccess(for: FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Documents"), name: "Documents")
-        
-        if desktopAccess || documentsAccess {
-            if verifyFolderAccess() {
-                log("Folder access verified, starting file watching")
-                startWatching()
-            } else {
-                log("Folder access verification failed", level: .error)
-                showAccessDeniedAlert()
-            }
-        } else {
-            log("User didn't select any folders. Desktop: \(desktopAccess), Documents: \(documentsAccess)", level: .warning)
-            showAccessDeniedAlert()
-        }
-    }
-
-    private func createAndStoreBookmarks(desktop: URL, documents: URL) {
-        log("Creating and storing bookmarks for Desktop and Documents")
-        do {
-            desktopBookmark = try desktop.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil)
-            documentsBookmark = try documents.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil)
-            
-            UserDefaults.standard.set(desktopBookmark, forKey: "DesktopBookmark")
-            UserDefaults.standard.set(documentsBookmark, forKey: "DocumentsBookmark")
-            
-            log("Bookmarks created and stored successfully")
-        } catch {
-            log("Error creating bookmarks: \(error.localizedDescription)", level: .error)
-        }
-    }
-
     func verifyFolderAccess() -> Bool {
         let paths = getWatchedPaths()
         log("Verifying folder access for paths: \(paths)")
@@ -474,38 +498,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         return result
     }
 
-    private func resolveBookmarks() -> [URL] {
-        log("Resolving bookmarks")
-        var resolvedURLs: [URL] = []
-
-        for key in ["DesktopBookmark", "DocumentsBookmark"] {
-            if let bookmarkData = UserDefaults.standard.data(forKey: key) {
-                do {
-                    var isStale = false
-                    let url = try URL(resolvingBookmarkData: bookmarkData, options: .withSecurityScope, relativeTo: nil, bookmarkDataIsStale: &isStale)
-                    
-                    if isStale {
-                        log("Bookmark for \(key) is stale", level: .warning)
-                        // Here you might want to request new permission and create a new bookmark
-                    } else {
-                        resolvedURLs.append(url)
-                    }
-                } catch {
-                    log("Error resolving bookmark for \(key): \(error.localizedDescription)", level: .error)
-                }
-            } else {
-                log("No bookmark data found for \(key)", level: .warning)
-            }
-        }
-
-        return resolvedURLs
-    }
-
-    func stopAccessingSecurityScopedResources(for urls: [URL]) {
-        for url in urls {
-            url.stopAccessingSecurityScopedResource()
-            log("Stopped accessing security-scoped resource: \(url.path)")
-        }
+    func showAccessDeniedAlert() {
+        log("Failed to gain access to watched folders", level: .error)
+        let failureAlert = NSAlert()
+        failureAlert.messageText = "Access Denied"
+        failureAlert.informativeText = "Failed to gain access to the Desktop and Documents folders. Please check your system preferences and try again."
+        failureAlert.alertStyle = .critical
+        failureAlert.runModal()
     }
 
     func testFileCreation() {
