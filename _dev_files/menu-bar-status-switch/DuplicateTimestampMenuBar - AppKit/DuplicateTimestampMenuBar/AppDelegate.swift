@@ -177,6 +177,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     
     /// The ToggleView instance for the menu item.
     private var toggleView: ToggleView?
+    
+    /// The log window for displaying the log file contents.
+    var logWindow: NSWindow?
+    
+    /// Indicates whether the log window is currently visible.
+    var isLogWindowVisible = false
 
     /// Initializes the AppDelegate.
     override init() {
@@ -242,8 +248,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         menu.addItem(NSMenuItem.separator())
 
-        let debugMenuItem = NSMenuItem(title: "Toggle Debug Mode", action: #selector(toggleDebugMode), keyEquivalent: "")
-        menu.addItem(debugMenuItem)
+        let logMenuItem = NSMenuItem(title: "Open Log File...", action: #selector(openLogFile), keyEquivalent: "")
+        logMenuItem.target = self
+        menu.addItem(logMenuItem)
 
         menu.addItem(NSMenuItem.separator())
 
@@ -261,36 +268,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         log("Application will terminate")
         stopWatching()
         stopAccessingSecurityScopedResources()
-    }
-
-    /// Sets up the debug window for displaying additional information.
-    func setupDebugWindow() {
-        log("Setting up debug window")
-        debugWindow = NSWindow(contentRect: NSRect(x: 100, y: 100, width: 300, height: 200),
-                               styleMask: [.titled, .closable, .miniaturizable, .resizable],
-                               backing: .buffered,
-                               defer: false)
-        debugWindow?.title = "Debug Info"
-        debugWindow?.isReleasedWhenClosed = false
-        
-        let textView = NSTextView(frame: debugWindow!.contentView!.bounds)
-        textView.isEditable = false
-        textView.autoresizingMask = [.width, .height]
-        debugWindow?.contentView?.addSubview(textView)
-    }
-
-    /// Toggles the debug mode on and off.
-    @objc func toggleDebugMode() {
-        isDebugMode = !isDebugMode
-        log("Debug mode \(isDebugMode ? "enabled" : "disabled")")
-        if isDebugMode {
-            debugWindow?.makeKeyAndOrderFront(nil)
-        } else {
-            debugWindow?.orderOut(nil)
-        }
-        if let menuItem = statusItem?.menu?.item(withTitle: "Toggle Debug Mode") {
-            menuItem.state = isDebugMode ? .on : .off
-        }
     }
 
     /// Toggles the menu when the status item is clicked.
@@ -694,6 +671,33 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         animation.calculationMode = .linear
         
         button.layer?.add(animation, forKey: "doubleWiggleAnimation")
+    }
+
+    // New functions for log window functionality
+    @objc func openLogFile() {
+        let fileManager = FileManager.default
+        guard let containerURL = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
+            log("Unable to access application support directory", level: .error)
+            return
+        }
+
+        let logFile = containerURL
+            .appendingPathComponent("DuplicateTimestampMenuBar")
+            .appendingPathComponent("Logs")
+            .appendingPathComponent("DuplicateWithTimestamp-swift.log")
+
+        if fileManager.fileExists(atPath: logFile.path) {
+            NSWorkspace.shared.open(logFile)
+        } else {
+            log("Log file not found at path: \(logFile.path)", level: .error)
+            // Optionally, show an alert to the user
+            let alert = NSAlert()
+            alert.messageText = "Log File Not Found"
+            alert.informativeText = "The log file could not be found at the expected location."
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "OK")
+            alert.runModal()
+        }
     }
 }
 
