@@ -183,10 +183,51 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     
     /// Indicates whether the log window is currently visible.
     var isLogWindowVisible = false
+    
+    /// The about window for displaying app information.
+    var aboutWindow: NSWindow?
+
+    private var aboutWindowController: NSWindowController?
+    
+    /// Displays the "About" window for the application.
+    ///
+    /// This function creates and shows a new "About" window, making it the key window
+    /// and bringing the application to the foreground. It performs these operations
+    /// asynchronously on the main dispatch queue to ensure thread safety and proper UI updates.
+    ///
+    /// - Note: This function uses weak self to prevent potential retain cycles in the closure.
+    ///
+    /// - Important: If the AppDelegate instance is deallocated before or during the execution
+    ///   of this function, the operation will be safely aborted.
+    ///
+    /// - SeeAlso: `createAboutWindow()` method, which is responsible for creating the actual window content.
+    @objc func showAboutWindow() {
+        log("showAboutWindow called", level: .debug)
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else {
+                log("Self is nil in showAboutWindow", level: .error)
+                return
+            }
+            
+            log("Creating new about window", level: .debug)
+            let window = self.createAboutWindow()
+            self.aboutWindowController = NSWindowController(window: window)
+            
+            log("Showing about window", level: .debug)
+            self.aboutWindowController?.showWindow(nil)
+            
+            log("Making about window key window", level: .debug)
+            window.makeKeyAndOrderFront(nil)
+            
+            log("Activating app", level: .debug)
+            NSApp.activate(ignoringOtherApps: true)
+        }
+    }
 
     /// Initializes the AppDelegate.
     override init() {
         super.init()
+        log("AppDelegate initialized")
         log("AppDelegate initialized")
     }
 
@@ -242,11 +283,21 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.delegate = self
 
         let customMenuItem = NSMenuItem()
-        toggleView = ToggleView(title: "Duplicate + Timestamp", isOn: isEnabled, target: self, action: #selector(toggleFeature))
+        toggleView = ToggleView(title: "{⌘} CLVR", isOn: isEnabled, target: self, action: #selector(toggleFeature))
         customMenuItem.view = toggleView
         menu.addItem(customMenuItem)
 
         menu.addItem(NSMenuItem.separator())
+
+        let aboutMenuItem = NSMenuItem(title: "About {⌘} CLVR", action: #selector(showAboutWindow), keyEquivalent: "")
+        aboutMenuItem.target = self
+        menu.addItem(aboutMenuItem)
+
+        menu.addItem(NSMenuItem.separator())
+
+        let settingsMenuItem = NSMenuItem(title: "Settings...", action: #selector(showSettingsWindow), keyEquivalent: "")
+        settingsMenuItem.target = self
+        menu.addItem(settingsMenuItem)
 
         let logMenuItem = NSMenuItem(title: "Open Log File...", action: #selector(openLogFile), keyEquivalent: "")
         logMenuItem.target = self
@@ -254,7 +305,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         menu.addItem(NSMenuItem.separator())
 
-        let quitItem = NSMenuItem(title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        let quitItem = NSMenuItem(title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "")
         menu.addItem(quitItem)
 
         statusItem?.menu = menu
@@ -284,7 +335,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         isEnabled = sender.state == .on
         log("Feature toggled: \(isEnabled ? "enabled" : "disabled")")
         
-        animateStatusItemIcon()
+        // Simply update the icon without animation
+        updateStatusItemIcon()
     }
 
     /// Starts watching for file system events.
@@ -495,7 +547,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             // Extract existing timestamps
             let regex = try! NSRegularExpression(pattern: #"-copy-\d{4}-\d{2}-\d{2}-\d{6}(--\d{4}-\d{2}-\d{2}-\d{6})*$"#)
             if let match = regex.firstMatch(in: name, options: [], range: NSRange(location: 0, length: name.utf16.count)) {
-                let timestampStart = match.range.lowerBound
+                let timestampStart = match.range.location
                 name = (name as NSString).substring(to: timestampStart)
             }
             newName = "\(name)-copy-\(timestamp).\(fileExtension)"
@@ -511,13 +563,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             newName = "\(name)-copy-\(timestamp) (\(counter)).\(fileExtension)"
             newPath = directory.appendingPathComponent(newName).path
             counter += 1
-        }
+        } 
 
         do {
             try FileManager.default.moveItem(atPath: path, toPath: newPath)
             log("Successfully renamed: \(path) to \(newPath)")
             
-            // Trigger the wiggle animation after successful renaming
+            // Trigger the animation after successful renaming
             DispatchQueue.main.async { [weak self] in
                 self?.animateStatusItemIcon()
             }
@@ -526,23 +578,98 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
 
+    /// Generates a formatted timestamp string for use in file naming.
+    ///
+    /// This function creates a timestamp string in the format "yyyy-MM-dd-HHmmss" 
+    /// representing the current date and time. It's primarily used for appending 
+    /// to filenames when creating copies or renaming files.
+    ///
+    /// - Returns: A `String` containing the formatted timestamp.
+    ///
+    /// - Note: The timestamp format is fixed and does not account for localization 
+    ///         or time zones. It uses the system's current date and time.
     private func formattedTimestamp() -> String {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd-HHmmss"
         return dateFormatter.string(from: Date())
     }
-
+    /// Updates the status item icon in the menu bar based on the current enabled state of the application.
+    ///
+    /// This function sets the appropriate icon for the status item depending on whether the application
+    /// is enabled or disabled. It uses SF Symbols for the icons and applies a custom configuration.
+    ///
+    /// - Note: The function uses "command.square.fill" for the enabled state and "command.square" for the disabled state.
+    ///
+    /// - Important: If the system symbol fails to load, an error message is logged.
+    ///
+    /// - SeeAlso: `isEnabled` property, which determines which icon to display.
     func updateStatusItemIcon() {
-        let iconName = isEnabled ? "doc.on.doc.fill" : "doc.on.doc"
-        let image = NSImage(systemSymbolName: iconName, accessibilityDescription: "Duplicate")
-        image?.isTemplate = true
-        statusItem?.button?.image = image
+        let iconName = isEnabled ? "command.square.fill" : "command.square"
+        
+        let configuration = NSImage.SymbolConfiguration(pointSize: 17, weight: .regular)
+        if let image = NSImage(systemSymbolName: iconName, accessibilityDescription: nil)?.withSymbolConfiguration(configuration) {
+            image.isTemplate = true
+            statusItem?.button?.image = image
+            
+            // Reduce padding by setting a custom length
+            statusItem?.length = NSStatusItem.squareLength
+        } else {
+            log("Failed to load system symbol: \(iconName)", level: .error)
+        }
+    }
+
+    func animateStatusItemIcon() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self,
+                  let button = self.statusItem?.button,
+                  let originalImage = button.image else {
+                return
+            }
+            
+            // Create the animated image with the larger size
+            let configuration = NSImage.SymbolConfiguration(pointSize: 17, weight: .regular)
+            guard let animatedImage = NSImage(systemSymbolName: "d.circle.fill", accessibilityDescription: nil)?.withSymbolConfiguration(configuration) else {
+                log("Failed to load system symbol: d.circle.fill", level: .warning)
+                return
+            }
+            
+            // Perform the animation
+            NSAnimationContext.runAnimationGroup({ context in
+                context.duration = 0.3
+                context.allowsImplicitAnimation = true
+                button.animator().alphaValue = 0.5
+                button.image = animatedImage
+            }, completionHandler: {
+                NSAnimationContext.runAnimationGroup({ context in
+                    context.duration = 0.3
+                    context.allowsImplicitAnimation = true
+                    button.animator().alphaValue = 1.0
+                }, completionHandler: {
+                    // Always reset to the original icon after animation
+                    button.image = originalImage
+                })
+            })
+        }
     }
 
     func hideAppFromDock() {
         NSApp.setActivationPolicy(.accessory)
     }
 
+    /// Sends a local notification to the user with the specified title and message.
+    ///
+    /// This function creates and schedules a local notification using the UserNotifications framework.
+    /// The notification is displayed immediately as no trigger is specified.
+    ///
+    /// - Parameters:
+    ///   - title: A String representing the title of the notification.
+    ///   - message: A String representing the body message of the notification.
+    ///
+    /// - Note: This function requires the app to have permission to send notifications.
+    ///         Ensure that notification permissions are requested and granted before calling this function.
+    ///
+    /// - Important: If an error occurs while adding the notification request, it will be logged
+    ///              using the app's logging system with an error level.
     func sendNotification(title: String, message: String) {
         let content = UNMutableNotificationContent()
         content.title = title
@@ -652,27 +779,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         toggleView?.isOn = isEnabled
     }
 
-    /// Animates the status item icon with a wiggle effect.
-    ///
-    /// This function creates and applies a horizontal translation animation to the status item's button,
-    /// creating a wiggle effect. The animation is a sequence of small left and right movements,
-    /// gradually decreasing in magnitude.
-    ///
-    /// - Note: This function does nothing if the status item or its button is not available.
-    ///
-    /// - Important: This function assumes that the status item's button has a layer. If the layer
-    ///   is not available, the animation will not be applied.
-    func animateStatusItemIcon() {
-        guard let button = statusItem?.button else { return }
-        
-        let animation = CAKeyframeAnimation(keyPath: "transform.translation.x")
-        animation.values = [-1.5, 1.5, 0, -1.5, 1.5, 0]
-        animation.duration = 0.45
-        animation.calculationMode = .linear
-        
-        button.layer?.add(animation, forKey: "doubleWiggleAnimation")
-    }
-
     // New functions for log window functionality
     @objc func openLogFile() {
         let fileManager = FileManager.default
@@ -698,6 +804,252 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             alert.addButton(withTitle: "OK")
             alert.runModal()
         }
+    }
+
+
+    /// Creates and configures the about window for the application.
+    ///
+    /// This function sets up a new NSWindow instance with predefined dimensions and style,
+    /// populating it with information about the application including its icon, name,
+    /// version, and copyright details.
+    ///
+    /// - Returns: An NSWindow instance configured as the about window.
+    ///
+    /// - Note: The window is set up with a size of 300x200 pixels and includes the app icon,
+    ///         app name, version number, and copyright information.
+    ///
+    /// - Important: This method assumes that an "AppIcon" image is available in the asset catalog.
+    ///              If the icon is not found, a warning will be logged.
+    ///
+    /// - SeeAlso: `NSWindow`, `NSImageView`, `NSTextField`
+
+    func createAboutWindow() -> NSWindow {
+        log("createAboutWindow called", level: .debug)
+        let window = NSWindow(contentRect: NSRect(x: 100, y: 100, width: 300, height: 200),
+                              styleMask: [.titled, .closable, .miniaturizable],
+                              backing: .buffered,
+                              defer: false)
+        window.title = "About CLVR"
+        window.center()
+
+        let contentView = NSView(frame: window.contentRect(forFrameRect: window.frame))
+        window.contentView = contentView
+
+        // App Icon
+        let iconSize: CGFloat = 60
+        let iconView = NSImageView(frame: NSRect(x: (300 - iconSize) / 2, y: 120, width: iconSize, height: iconSize))
+        if let appIcon = NSImage(named: "AppIcon") {
+            iconView.image = appIcon
+            log("AppIcon loaded successfully", level: .debug)
+        } else {
+            log("AppIcon not found in asset catalog", level: .warning)
+        }
+        contentView.addSubview(iconView)
+
+        // App Name
+        let nameLabel = NSTextField(labelWithString: "CLVR")
+        nameLabel.font = NSFont.boldSystemFont(ofSize: 16)
+        nameLabel.alignment = .center
+        nameLabel.frame = NSRect(x: 0, y: 90, width: 300, height: 20)
+        contentView.addSubview(nameLabel)
+
+        // Version
+        let versionLabel = NSTextField(labelWithString: "Version 1.00")
+        versionLabel.font = NSFont.systemFont(ofSize: 12)
+        versionLabel.alignment = .center
+        versionLabel.frame = NSRect(x: 0, y: 70, width: 300, height: 20)
+        contentView.addSubview(versionLabel)
+
+        // Copyright
+        let copyrightLabel = NSTextField(labelWithString: "Copyright © 2024 Parker Todd Brooks\nAll rights reserved.")
+        copyrightLabel.font = NSFont.systemFont(ofSize: 10)
+        copyrightLabel.alignment = .center
+        copyrightLabel.frame = NSRect(x: 0, y: 20, width: 300, height: 40)
+        contentView.addSubview(copyrightLabel)
+
+        // Set up the window to close with Command+W
+        window.standardWindowButton(.closeButton)?.keyEquivalent = "w"
+        window.standardWindowButton(.closeButton)?.keyEquivalentModifierMask = .command
+
+        log("About window created successfully", level: .debug)
+        return window
+    }
+
+    // Add these properties to the AppDelegate class
+    private var settingsWindow: NSWindow?
+    private var settingsWindowController: NSWindowController?
+
+    // Add this method to the AppDelegate class
+    @objc func showSettingsWindow() {
+        if settingsWindow == nil {
+            settingsWindow = createSettingsWindow()
+            settingsWindowController = NSWindowController(window: settingsWindow)
+        }
+        
+        settingsWindowController?.showWindow(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    /// Creates and configures the settings window for the application.
+    ///
+    /// This method sets up a window with various UI elements for configuring application settings,
+    /// including options for showing the app in the Dock and Menu Bar, and selecting a date format.
+    ///
+    /// - Returns: A configured NSWindow instance representing the settings window.
+    ///
+    /// - Note: This method creates labels, toggle switches, and a popup button for various settings.
+    ///         The window's appearance is customized with specific colors and layout.
+    func createSettingsWindow() -> NSWindow {
+        // Increase the window height to accommodate the additional padding
+        let window = NSWindow(contentRect: NSRect(x: 100, y: 100, width: 600, height: 205),
+                              styleMask: [.titled, .closable, .miniaturizable],
+                              backing: .buffered,
+                              defer: false)
+        window.title = "Settings"
+        window.center()
+
+        let contentView = NSView(frame: window.contentRect(forFrameRect: window.frame))
+        window.contentView = contentView
+
+        contentView.wantsLayer = true
+        contentView.layer?.backgroundColor = NSColor(red: 234/255, green: 234/255, blue: 234/255, alpha: 1.0).cgColor
+
+        // Adjust the position and height of the main container
+        let mainContainer = NSView(frame: NSRect(x: 20, y: 20, width: 560, height: 165))
+        mainContainer.wantsLayer = true
+        mainContainer.layer?.backgroundColor = NSColor(red: 230/255, green: 230/255, blue: 230/255, alpha: 1.0).cgColor
+        mainContainer.layer?.cornerRadius = 10
+        mainContainer.layer?.borderWidth = 1
+        mainContainer.layer?.borderColor = NSColor(red: 219/255, green: 219/255, blue: 219/255, alpha: 1.0).cgColor
+        contentView.addSubview(mainContainer)
+
+        // Adjust the starting y-offset
+        var yOffset = 130
+
+        // Show in Dock
+        let dockLabel = createLabel(text: "Show in Dock", fontSize: 13, bold: false)
+        dockLabel.frame = NSRect(x: 20, y: yOffset, width: 400, height: 20)
+        mainContainer.addSubview(dockLabel)
+
+        let dockToggle = createToggleSwitch(frame: NSRect(x: 500, y: yOffset, width: 40, height: 20))
+        mainContainer.addSubview(dockToggle)
+
+        yOffset -= 20
+        let dockDescription = createLabel(text: "App will appear in the Dock, Switcher, and 'Force Quit Applications'", fontSize: 11, color: .secondaryLabelColor)
+        dockDescription.frame = NSRect(x: 20, y: yOffset, width: 520, height: 20)
+        mainContainer.addSubview(dockDescription)
+
+        yOffset -= 10
+        let separator1 = NSBox(frame: NSRect(x: 20, y: yOffset, width: 520, height: 1))
+        separator1.boxType = .separator
+        mainContainer.addSubview(separator1)
+
+        yOffset -= 30
+        // Show in Menu Bar
+        let menuBarLabel = createLabel(text: "Show in Menu Bar", fontSize: 13, bold: false)
+        menuBarLabel.frame = NSRect(x: 20, y: yOffset, width: 400, height: 20)
+        mainContainer.addSubview(menuBarLabel)
+
+        let menuBarToggle = createToggleSwitch(frame: NSRect(x: 500, y: yOffset, width: 40, height: 20))
+        mainContainer.addSubview(menuBarToggle)
+
+        yOffset -= 20
+        let menuBarDescription = createLabel(text: "If off, 'Show in Dock' must be on", fontSize: 11, color: .secondaryLabelColor)
+        menuBarDescription.frame = NSRect(x: 20, y: yOffset, width: 520, height: 20)
+        mainContainer.addSubview(menuBarDescription)
+
+        yOffset -= 10
+        let separator2 = NSBox(frame: NSRect(x: 20, y: yOffset, width: 520, height: 1))
+        separator2.boxType = .separator
+        mainContainer.addSubview(separator2)
+
+        yOffset -= 30
+        // Date Format
+        let dateFormatLabel = createLabel(text: "Date Format", fontSize: 13, bold: false)
+        dateFormatLabel.frame = NSRect(x: 20, y: yOffset, width: 200, height: 20)
+        mainContainer.addSubview(dateFormatLabel)
+
+        let dateFormatPopup = createPopUpButton(frame: NSRect(x: 240, y: yOffset, width: 300, height: 20))
+        dateFormatPopup.addItems(withTitles: [
+            "orginal-name-copy-yyyy-MM-dd-HHmmss",
+            "orginal-name-yyyy-MM-dd-HHmmss",
+            "orginal-name-copy-yyyy-dd-MM-HHmmss",
+            "orginal-name-yyyy-MM-dd-HHmmss"
+        ])
+        mainContainer.addSubview(dateFormatPopup)
+
+        // Add logic for toggles
+        dockToggle.action = #selector(dockToggleChanged(_:))
+        dockToggle.target = self
+        menuBarToggle.action = #selector(menuBarToggleChanged(_:))
+        menuBarToggle.target = self
+
+        // Adjust the content size and min/max sizes of the window
+        window.isRestorable = false
+        window.setContentSize(NSSize(width: 600, height: 205))
+        window.minSize = NSSize(width: 600, height: 205)
+        window.maxSize = NSSize(width: 600, height: 205)
+
+        return window
+    }
+
+    @objc func dockToggleChanged(_ sender: NSSwitch) {
+        if sender.state == .off {
+            // If dock toggle is turned off, ensure menu bar toggle is on
+            if let menuBarToggle = settingsWindow?.contentView?.subviews.first?.subviews.compactMap({ $0 as? NSSwitch }).last {
+                menuBarToggle.state = .on
+            }
+        }
+    }
+
+    @objc func menuBarToggleChanged(_ sender: NSSwitch) {
+        if sender.state == .off {
+            // If menu bar toggle is turned off, ensure dock toggle is on
+            if let dockToggle = settingsWindow?.contentView?.subviews.first?.subviews.compactMap({ $0 as? NSSwitch }).first {
+                dockToggle.state = .on
+            }
+        }
+    }
+
+    /// Creates a label with specified text, font size, weight, and color.
+    ///
+    /// - Parameters:
+    ///   - text: The string to display in the label.
+    ///   - fontSize: The size of the font to use.
+    ///   - bold: A boolean indicating whether the font should be bold. Defaults to false.
+    ///   - color: The color of the text. Defaults to .labelColor.
+    ///
+    /// - Returns: A configured NSTextField instance representing the label.
+    func createLabel(text: String, fontSize: CGFloat, bold: Bool = false, color: NSColor = .labelColor) -> NSTextField {
+        let label = NSTextField(labelWithString: text)
+        label.font = bold ? NSFont.boldSystemFont(ofSize: fontSize) : NSFont.systemFont(ofSize: fontSize)
+        label.textColor = color
+        label.isEditable = false
+        label.isBezeled = false
+        label.drawsBackground = false
+        return label
+    }
+
+    /// Creates a toggle switch control.
+    ///
+    /// - Parameter frame: The frame rectangle for the switch.
+    ///
+    /// - Returns: A configured NSSwitch instance.
+    func createToggleSwitch(frame: NSRect) -> NSSwitch {
+        let toggle = NSSwitch(frame: frame)
+        toggle.controlSize = .small
+        return toggle
+    }
+
+    /// Creates a popup button control.
+    ///
+    /// - Parameter frame: The frame rectangle for the popup button.
+    ///
+    /// - Returns: A configured NSPopUpButton instance.
+    func createPopUpButton(frame: NSRect) -> NSPopUpButton {
+        let popup = NSPopUpButton(frame: frame, pullsDown: false)
+        popup.controlSize = .regular
+        return popup
     }
 }
 
@@ -760,7 +1112,7 @@ class ToggleView: NSView {
         super.init(frame: NSRect(x: 0, y: 0, width: 250, height: 30))
 
         titleField = NSTextField(labelWithString: title)
-        titleField.font = NSFont.systemFont(ofSize: 13)
+        titleField.font = NSFont.boldSystemFont(ofSize: NSFont.systemFontSize)
         titleField.textColor = .labelColor
         titleField.translatesAutoresizingMaskIntoConstraints = false
         addSubview(titleField)
@@ -807,15 +1159,16 @@ extension Array where Element: Hashable {
     /// Removes duplicate elements from the array while preserving the original order.
     ///
     /// This method creates a new array containing only the unique elements from the original array,
-    /// maintaining the order in which they first appear.
+    /// maintaining the order in which they first appeared.
     ///
-    /// - Complexity: O(n), where n is the length of the array.
+    /// - Returns: A new array containing only the unique elements from the original array.
     ///
-    /// - Returns: A new array containing only the unique elements from the original array,
-    ///            preserving their original order.
+    /// - Complexity: O(n), where n is the number of elements in the array.
     ///
-    /// - Note: This method uses a dictionary to keep track of elements that have already been seen,
-    ///         which allows for efficient lookup and removal of duplicates.
+    /// - Note: This method uses a dictionary to track unique elements, which may have memory implications
+    ///         for very large arrays.
+    ///
+    /// - Important: The `Element` type must conform to `Hashable` for this method to work correctly.
     func removingDuplicates() -> [Element] {
         var addedDict = [Element: Bool]()
         return filter {
