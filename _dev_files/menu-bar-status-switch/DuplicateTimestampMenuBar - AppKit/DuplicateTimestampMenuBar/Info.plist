@@ -2,7 +2,7 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>LSUIElement</key>   
+	<key>LSUIElement</key>
 	<true/>
 	<key>NSPrincipalClass</key>
 	<string>$(PRODUCT_MODULE_NAME).AppDelegate</string>
@@ -12,5 +12,7 @@
 	<string>This app needs access to your Documents folder to monitor for new files.</string>
 	<key>com.apple.security.files.user-selected.read-write</key>
 	<true/>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.utilities</string>
 </dict>
 </plist>

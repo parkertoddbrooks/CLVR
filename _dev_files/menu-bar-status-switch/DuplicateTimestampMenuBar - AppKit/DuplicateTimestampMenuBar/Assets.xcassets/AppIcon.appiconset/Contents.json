@@ -46,6 +46,7 @@
       "size" : "512x512"
     },
     {
+      "filename" : "Icon-macOS-512x512@2x.png",
       "idiom" : "mac",
       "scale" : "2x",
       "size" : "512x512"
