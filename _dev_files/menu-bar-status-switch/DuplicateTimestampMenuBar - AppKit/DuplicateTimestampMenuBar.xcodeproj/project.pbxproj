@@ -14,7 +14,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		2CA4CB092C55313200024B0A /* DuplicateTimestampMenuBar.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DuplicateTimestampMenuBar.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		2CA4CB092C55313200024B0A /* CLVR.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CLVR.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2CA4CB0C2C55313200024B0A /* DuplicateTimestampMenuBarApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuplicateTimestampMenuBarApp.swift; sourceTree = "<group>"; };
 		2CA4CB122C55313400024B0A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		2CA4CB152C55313400024B0A /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
@@ -45,7 +45,7 @@
 		2CA4CB0A2C55313200024B0A /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				2CA4CB092C55313200024B0A /* DuplicateTimestampMenuBar.app */,
+				2CA4CB092C55313200024B0A /* CLVR.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -74,9 +74,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		2CA4CB082C55313200024B0A /* DuplicateTimestampMenuBar */ = {
+		2CA4CB082C55313200024B0A /* CLVR */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 2CA4CB1A2C55313400024B0A /* Build configuration list for PBXNativeTarget "DuplicateTimestampMenuBar" */;
+			buildConfigurationList = 2CA4CB1A2C55313400024B0A /* Build configuration list for PBXNativeTarget "CLVR" */;
 			buildPhases = (
 				2CA4CB052C55313200024B0A /* Sources */,
 				2CA4CB062C55313200024B0A /* Frameworks */,
@@ -86,9 +86,9 @@
 			);
 			dependencies = (
 			);
-			name = DuplicateTimestampMenuBar;
+			name = CLVR;
 			productName = DuplicateTimestampMenuBar;
-			productReference = 2CA4CB092C55313200024B0A /* DuplicateTimestampMenuBar.app */;
+			productReference = 2CA4CB092C55313200024B0A /* CLVR.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -119,7 +119,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				2CA4CB082C55313200024B0A /* DuplicateTimestampMenuBar */,
+				2CA4CB082C55313200024B0A /* CLVR */,
 			);
 		};
 /* End PBXProject section */
@@ -285,14 +285,17 @@
 				INFOPLIST_KEY_CFBundleDisplayName = CLVR;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_LSUIElement = YES;
+				INFOPLIST_KEY_NSDesktopFolderUsageDescription = "This app needs access to your Desktop folder to monitor for new files.";
+				INFOPLIST_KEY_NSDocumentsFolderUsageDescription = "This app needs access to your Documents folder to monitor for new files.";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSPrincipalClass = "$(PRODUCT_MODULE_NAME).AppDelegate";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.5;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = ParkerToddBrooks.DuplicateTimestampMenuBar;
+				PRODUCT_BUNDLE_IDENTIFIER = ParkerToddBrooks.CLVR;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -317,14 +320,17 @@
 				INFOPLIST_KEY_CFBundleDisplayName = CLVR;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_LSUIElement = YES;
+				INFOPLIST_KEY_NSDesktopFolderUsageDescription = "This app needs access to your Desktop folder to monitor for new files.";
+				INFOPLIST_KEY_NSDocumentsFolderUsageDescription = "This app needs access to your Documents folder to monitor for new files.";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSPrincipalClass = "$(PRODUCT_MODULE_NAME).AppDelegate";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.5;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = ParkerToddBrooks.DuplicateTimestampMenuBar;
+				PRODUCT_BUNDLE_IDENTIFIER = ParkerToddBrooks.CLVR;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -343,7 +349,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		2CA4CB1A2C55313400024B0A /* Build configuration list for PBXNativeTarget "DuplicateTimestampMenuBar" */ = {
+		2CA4CB1A2C55313400024B0A /* Build configuration list for PBXNativeTarget "CLVR" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2CA4CB1B2C55313400024B0A /* Debug */,

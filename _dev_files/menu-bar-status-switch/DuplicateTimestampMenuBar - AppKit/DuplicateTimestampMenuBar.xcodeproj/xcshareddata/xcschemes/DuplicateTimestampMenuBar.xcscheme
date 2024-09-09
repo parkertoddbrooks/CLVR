@@ -16,8 +16,8 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "2CA4CB082C55313200024B0A"
-               BuildableName = "DuplicateTimestampMenuBar.app"
-               BlueprintName = "DuplicateTimestampMenuBar"
+               BuildableName = "CLVR.app"
+               BlueprintName = "CLVR"
                ReferencedContainer = "container:DuplicateTimestampMenuBar.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -45,8 +45,8 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "2CA4CB082C55313200024B0A"
-            BuildableName = "DuplicateTimestampMenuBar.app"
-            BlueprintName = "DuplicateTimestampMenuBar"
+            BuildableName = "CLVR.app"
+            BlueprintName = "CLVR"
             ReferencedContainer = "container:DuplicateTimestampMenuBar.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
@@ -69,8 +69,8 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "2CA4CB082C55313200024B0A"
-            BuildableName = "DuplicateTimestampMenuBar.app"
-            BlueprintName = "DuplicateTimestampMenuBar"
+            BuildableName = "CLVR.app"
+            BlueprintName = "CLVR"
             ReferencedContainer = "container:DuplicateTimestampMenuBar.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>

@@ -268,19 +268,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         updateDockVisibility()
         
         setupMainMenu()
-
-        // Set default values for showInDock and showInMenuBar if not already set
-        if UserDefaults.standard.object(forKey: "ShowInDock") == nil {
-            showInDock = true
-        }
-        if UserDefaults.standard.object(forKey: "ShowInMenuBar") == nil {
-            showInMenuBar = true
-        } else {
-            // If showInMenuBar was previously set, make sure to update visibility
-            updateMenuBarVisibility()
-        }
-
-        updateDockVisibility()
     }
 
     /// Sets up the status item in the menu bar.
@@ -680,26 +667,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
 
-    @objc dynamic var showInMenuBar: Bool {
-        get {
-            UserDefaults.standard.bool(forKey: "ShowInMenuBar")
-        }
-        set {
-            UserDefaults.standard.set(newValue, forKey: "ShowInMenuBar")
-            updateMenuBarVisibility()
-        }
-    }
-
     func updateDockVisibility() {
         if showInDock {
             NSApp.setActivationPolicy(.regular)
         } else {
             NSApp.setActivationPolicy(.accessory)
         }
-    }
-
-    func updateMenuBarVisibility() {
-        statusItem?.isVisible = showInMenuBar
     }
 
     /// Sends a local notification to the user with the specified title and message.
@@ -1020,7 +993,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         mainContainer.addSubview(dockLabel)
 
         let dockToggle = createToggleSwitch(frame: NSRect(x: 500, y: yOffset, width: 40, height: 20))
-        dockToggle.state = showInDock ? .on : .off  // Set initial state
         dockToggle.bind(.value, to: self, withKeyPath: "showInDock", options: nil)
         mainContainer.addSubview(dockToggle)
 
@@ -1041,8 +1013,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         mainContainer.addSubview(menuBarLabel)
 
         let menuBarToggle = createToggleSwitch(frame: NSRect(x: 500, y: yOffset, width: 40, height: 20))
-        menuBarToggle.state = showInMenuBar ? .on : .off  // Set initial state
-        menuBarToggle.bind(.value, to: self, withKeyPath: "showInMenuBar", options: nil)
         mainContainer.addSubview(menuBarToggle)
 
         yOffset -= 20
@@ -1071,8 +1041,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         mainContainer.addSubview(dateFormatPopup)
 
         // Add logic for toggles
-        dockToggle.action = #selector(dockToggleChanged(_:))
-        dockToggle.target = self
         menuBarToggle.action = #selector(menuBarToggleChanged(_:))
         menuBarToggle.target = self
 
@@ -1085,33 +1053,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         return window
     }
 
-    @objc func dockToggleChanged(_ sender: NSSwitch) {
-        if sender.state == .off {
-            // If dock toggle is turned off, ensure menu bar toggle is on
-            showInMenuBar = true
-            
-            // Schedule the re-opening of the settings window
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
-                self?.reopenSettingsWindow()
-            }
-        }
-    }
-
-    private func reopenSettingsWindow() {
-        // Close the current settings window
-        settingsWindowController?.close()
-        
-        // Create a new settings window and show it
-        settingsWindow = createSettingsWindow()
-        settingsWindowController = NSWindowController(window: settingsWindow)
-        settingsWindowController?.showWindow(nil)
-        NSApp.activate(ignoringOtherApps: true)
-    }
-
     @objc func menuBarToggleChanged(_ sender: NSSwitch) {
-        if sender.state == .off && !showInDock {
-            // If menu bar toggle is turned off and dock is not shown, turn on dock
-            showInDock = true
+        if sender.state == .off {
+            // If menu bar toggle is turned off, ensure dock toggle is on
+            if let dockToggle = settingsWindow?.contentView?.subviews.first?.subviews.compactMap({ $0 as? NSSwitch }).first {
+                dockToggle.state = .on
+            }
         }
     }
 

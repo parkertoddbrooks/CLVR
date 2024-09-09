@@ -1089,23 +1089,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if sender.state == .off {
             // If dock toggle is turned off, ensure menu bar toggle is on
             showInMenuBar = true
-            
-            // Schedule the re-opening of the settings window
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
-                self?.reopenSettingsWindow()
-            }
         }
-    }
-
-    private func reopenSettingsWindow() {
-        // Close the current settings window
-        settingsWindowController?.close()
-        
-        // Create a new settings window and show it
-        settingsWindow = createSettingsWindow()
-        settingsWindowController = NSWindowController(window: settingsWindow)
-        settingsWindowController?.showWindow(nil)
-        NSApp.activate(ignoringOtherApps: true)
     }
 
     @objc func menuBarToggleChanged(_ sender: NSSwitch) {
