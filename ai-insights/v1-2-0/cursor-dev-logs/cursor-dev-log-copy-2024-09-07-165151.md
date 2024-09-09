@@ -15,6 +15,3 @@
 - write a summary of the dependencies
 - write a summary of the assumptions
 - write a summary of the trade-offs
-
-
-Please provide a comprehensive documentation comment for the following Swift [function/class/method]. Include a brief description, all parameters with their types and purposes, return values if any, and any potential throws or important notes. Use the standard Swift documentation comment format with /// and parameter tags.
