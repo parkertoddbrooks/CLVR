@@ -521,6 +521,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     /// - Parameter filename: The name of the file to check.
     /// - Returns: A boolean indicating whether the file should be renamed.
     func shouldRenameFile(_ filename: String) -> Bool {
+        // Check if the file is hidden (starts with a dot)
+        if filename.hasPrefix(".") {
+            log("File is hidden, skipping: \(filename)")
+            return false
+        }
+
         let name = (filename as NSString).deletingPathExtension.lowercased()
         let hasCopySuffix = name.hasSuffix(" copy")
         let hasTimestamp = name.matches(regex: #"-copy_\d{4}-\d{2}-\d{2}-\d{6}$"#)
