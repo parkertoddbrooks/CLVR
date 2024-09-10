@@ -2,6 +2,9 @@
 *git-ignore*
 *git_ignore*
 
+#xcode files
+*.xcuserstate
+
 _dev_files/automator-app/cleaned-and-signed/*.app
 _dev_files/automator-app/cleaned-and-signed/DuplicateWithTimestamp.app
 
