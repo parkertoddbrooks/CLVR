@@ -2,8 +2,12 @@
 *git-ignore*
 *git_ignore*
 
-#xcode files
+# Xcode project files to ignore
 *.xcuserstate
+*.xcuserdata/
+*.xcworkspace/xcuserdata/
+*.xcbkptlist
+*.xcdebugger/
 
 _dev_files/automator-app/cleaned-and-signed/*.app
 _dev_files/automator-app/cleaned-and-signed/DuplicateWithTimestamp.app
