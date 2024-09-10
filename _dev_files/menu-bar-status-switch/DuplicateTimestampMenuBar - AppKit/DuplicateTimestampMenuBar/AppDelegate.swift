@@ -746,10 +746,19 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func showAccessDeniedAlert() {
         log("Failed to gain access to watched folders", level: .error)
         let failureAlert = NSAlert()
-        failureAlert.messageText = "Access Denied"
-        failureAlert.informativeText = "Failed to gain access to the Desktop and Documents folders. Please check your system preferences and try again."
-        failureAlert.alertStyle = .critical
-        failureAlert.runModal()
+        failureAlert.messageText = "Folder Access Required"
+        failureAlert.informativeText = "CLVR needs access to your Desktop and Documents folders to function properly. Please select these folders when prompted by the app."
+        failureAlert.alertStyle = .warning
+        failureAlert.addButton(withTitle: "Request Access")
+        failureAlert.addButton(withTitle: "Cancel and Quit")
+        
+        let response = failureAlert.runModal()
+        if response == .alertFirstButtonReturn {
+            requestPermission()
+        } else {
+            // User chose "Cancel and Quit"
+            NSApplication.shared.terminate(nil)
+        }
     }
 
     func testFileCreation() {
@@ -1015,7 +1024,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         var yOffset = 130
 
         // Show in Dock
-        let dockLabel = createLabel(text: "Show in Dock", fontSize: 13, bold: false)
+        let dockLabel = createLabel(text: "Show in dock", fontSize: 13, bold: false)
         dockLabel.frame = NSRect(x: 20, y: yOffset, width: 400, height: 20)
         mainContainer.addSubview(dockLabel)
 
@@ -1025,7 +1034,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         mainContainer.addSubview(dockToggle)
 
         yOffset -= 20
-        let dockDescription = createLabel(text: "App will appear in the Dock, Switcher, and 'Force Quit Applications'", fontSize: 11, color: .secondaryLabelColor)
+        let dockDescription = createLabel(text: "App will appear in Dock, Switcher, and 'Force Quit Applications'", fontSize: 11, color: .secondaryLabelColor)
         dockDescription.frame = NSRect(x: 20, y: yOffset, width: 520, height: 20)
         mainContainer.addSubview(dockDescription)
 
@@ -1036,7 +1045,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         yOffset -= 30
         // Show in Menu Bar 
-        let menuBarLabel = createLabel(text: "Show in Menu Bar", fontSize: 13, bold: false)
+        let menuBarLabel = createLabel(text: "Show in menu bar", fontSize: 13, bold: false)
         menuBarLabel.frame = NSRect(x: 20, y: yOffset, width: 400, height: 20)
         mainContainer.addSubview(menuBarLabel)
 
@@ -1046,7 +1055,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         mainContainer.addSubview(menuBarToggle)
 
         yOffset -= 20
-        let menuBarDescription = createLabel(text: "If off, 'Show in Dock' must be on", fontSize: 11, color: .secondaryLabelColor)
+        let menuBarDescription = createLabel(text: "If off, 'Show in dock' must be on", fontSize: 11, color: .secondaryLabelColor)
         menuBarDescription.frame = NSRect(x: 20, y: yOffset, width: 520, height: 20)
         mainContainer.addSubview(menuBarDescription)
 
@@ -1057,17 +1066,36 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         yOffset -= 30
         // Date Format
-        let dateFormatLabel = createLabel(text: "Date Format", fontSize: 13, bold: false)
+        // (⌘D)
+        let dateFormatLabel = createLabel(text: "File rename formatting", fontSize: 13, bold: false)
         dateFormatLabel.frame = NSRect(x: 20, y: yOffset, width: 200, height: 20)
         mainContainer.addSubview(dateFormatLabel)
 
-        let dateFormatPopup = createPopUpButton(frame: NSRect(x: 240, y: yOffset, width: 300, height: 20))
+        let dateFormatPopup = createPopUpButton(frame: NSRect(x: 270, y: yOffset, width: 270, height: 20))
         dateFormatPopup.addItems(withTitles: [
-            "orginal-name-copy-yyyy-MM-dd-HHmmss",
-            "orginal-name-yyyy-MM-dd-HHmmss",
-            "orginal-name-copy-yyyy-dd-MM-HHmmss",
-            "orginal-name-yyyy-MM-dd-HHmmss"
+            //  The copy in the drop down is for the user to see -- the rename logic lives in the code
+            "name-copy-yyyy-MM-dd-HHmmss.filename-extension (default)",
+            "name-yyyy-MM-dd-HHmmss.filename-extension",
+            //  Will add logic if any from ROW asks -- won't sort in order by name correectly.
+            // "-",
+            // "name-copy-yyyy-dd-MM-HHmmss.filename-extension",
+            // "name-yyyy-dd-MM-HHmmss.filename-extension"
         ])
+       
+        // Adjust appearance
+        dateFormatPopup.bezelStyle = .roundedDisclosure
+        dateFormatPopup.isBordered = false
+        dateFormatPopup.font = NSFont.systemFont(ofSize: 13)
+        dateFormatPopup.controlSize = .regular
+
+        // Set text color for the title only
+        if let cell = dateFormatPopup.cell as? NSPopUpButtonCell {
+            cell.attributedTitle = NSAttributedString(string: dateFormatPopup.title, attributes: [.foregroundColor: NSColor.secondaryLabelColor])
+        }
+
+        // Match background color (if needed)
+        dateFormatPopup.appearance = NSAppearance(named: .aqua)
+
         mainContainer.addSubview(dateFormatPopup)
 
         // Add logic for toggles
