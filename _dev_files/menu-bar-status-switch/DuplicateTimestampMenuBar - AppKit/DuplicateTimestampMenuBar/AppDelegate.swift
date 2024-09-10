@@ -394,9 +394,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         return paths
     }
 
-    /// Resolves the security-scoped bookmark for the Documents folder.
-    ///
-    /// - Returns: The URL of the Documents folder, or nil if resolution fails.
     private func resolveDocumentsBookmark() -> URL? {
         guard let bookmark = documentsBookmark else {
             log("No bookmark found for Documents", level: .warning)
@@ -481,7 +478,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
 
-    /// Stops accessing all security-scoped resources.
     private func stopAccessingSecurityScopedResources() {
         if let documentsURL = resolveDocumentsBookmark() {
             documentsURL.stopAccessingSecurityScopedResource()
@@ -527,7 +523,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func shouldRenameFile(_ filename: String) -> Bool {
         let name = (filename as NSString).deletingPathExtension.lowercased()
         let hasCopySuffix = name.hasSuffix(" copy")
-        let hasTimestamp = name.matches(regex: #"-copy-\d{4}-\d{2}-\d{2}-\d{6}$"#)
+        let hasTimestamp = name.matches(regex: #"-copy_\d{4}-\d{2}-\d{2}-\d{6}$"#)
         
         log("Checking file: \(filename), hasCopySuffix: \(hasCopySuffix), hasTimestamp: \(hasTimestamp)")
         
@@ -560,15 +556,15 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         if name.lowercased().hasSuffix(" copy") {
             name = (name as NSString).substring(to: name.count - 5)
-            newName = "\(name)-copy-\(timestamp).\(fileExtension)"
+            newName = "\(name)-copy_\(timestamp).\(fileExtension)"
         } else {
             // Extract existing timestamps
-            let regex = try! NSRegularExpression(pattern: #"-copy-\d{4}-\d{2}-\d{2}-\d{6}(--\d{4}-\d{2}-\d{2}-\d{6})*$"#)
+            let regex = try! NSRegularExpression(pattern: #"-copy_\d{4}-\d{2}-\d{2}-\d{6}(--\d{4}-\d{2}-\d{2}-\d{6})*$"#)
             if let match = regex.firstMatch(in: name, options: [], range: NSRange(location: 0, length: name.utf16.count)) {
                 let timestampStart = match.range.location
                 name = (name as NSString).substring(to: timestampStart)
             }
-            newName = "\(name)-copy-\(timestamp).\(fileExtension)"
+            newName = "\(name)-copy_\(timestamp).\(fileExtension)"
         }
 
         log("New name: \(newName)")
@@ -578,7 +574,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // Check if the new filename already exists
         var counter = 1
         while FileManager.default.fileExists(atPath: newPath) {
-            newName = "\(name)-copy-\(timestamp) (\(counter)).\(fileExtension)"
+            newName = "\(name)-copy_\(timestamp) (\(counter)).\(fileExtension)"
             newPath = directory.appendingPathComponent(newName).path
             counter += 1
         } 
@@ -608,7 +604,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     ///         or time zones. It uses the system's current date and time.
     private func formattedTimestamp() -> String {
         let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd-HHmmss"
+        dateFormatter.dateFormat = "yyyy-MM-dd_HH-mm-ss"
         return dateFormatter.string(from: Date())
     }
     /// Updates the status item icon in the menu bar based on the current enabled state of the application.
@@ -747,17 +743,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         log("Failed to gain access to watched folders", level: .error)
         let failureAlert = NSAlert()
         failureAlert.messageText = "Folder Access Required"
-        failureAlert.informativeText = "CLVR needs access to your Desktop and Documents folders to function properly. Please select these folders when prompted by the app."
+        failureAlert.informativeText = "CLVR needs access to your Desktop and Documents folders to function properly. Please grant access in System Settings > Privacy & Security > Files and Folders, then restart the app."
         failureAlert.alertStyle = .warning
-        failureAlert.addButton(withTitle: "Request Access")
-        failureAlert.addButton(withTitle: "Cancel and Quit")
+        failureAlert.addButton(withTitle: "Open System Settings")
+        failureAlert.addButton(withTitle: "OK")
         
         let response = failureAlert.runModal()
         if response == .alertFirstButtonReturn {
-            requestPermission()
-        } else {
-            // User chose "Cancel and Quit"
-            NSApplication.shared.terminate(nil)
+            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_FilesAndFolders") {
+                NSWorkspace.shared.open(url)
+            }
         }
     }
 
@@ -1073,13 +1068,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         let dateFormatPopup = createPopUpButton(frame: NSRect(x: 270, y: yOffset, width: 270, height: 20))
         dateFormatPopup.addItems(withTitles: [
-            //  The copy in the drop down is for the user to see -- the rename logic lives in the code
-            "name-copy-yyyy-MM-dd-HHmmss.filename-extension (default)",
-            "name-yyyy-MM-dd-HHmmss.filename-extension",
-            //  Will add logic if any from ROW asks -- won't sort in order by name correectly.
-            // "-",
-            // "name-copy-yyyy-dd-MM-HHmmss.filename-extension",
-            // "name-yyyy-dd-MM-HHmmss.filename-extension"
+            //  The copy in the drop down is for the UX - the rename logic lives in the code
+            "name-copy_yyyy-MM-dd_HH-mm-ss.filename-extension (default)",
+            "name_yyyy-MM-dd_HH-mm-ss.filename-extension",
         ])
        
         // Adjust appearance
@@ -1088,9 +1079,20 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         dateFormatPopup.font = NSFont.systemFont(ofSize: 13)
         dateFormatPopup.controlSize = .regular
 
-        // Set text color for the title only
+        // Set text color for the title and menu items
         if let cell = dateFormatPopup.cell as? NSPopUpButtonCell {
-            cell.attributedTitle = NSAttributedString(string: dateFormatPopup.title, attributes: [.foregroundColor: NSColor.secondaryLabelColor])
+            // Set the default menu item
+            dateFormatPopup.selectItem(at: 0)
+            
+            // Set attributed title for all items
+            for index in 0..<dateFormatPopup.numberOfItems {
+                if let item = dateFormatPopup.item(at: index) {
+                    item.attributedTitle = NSAttributedString(string: item.title, attributes: [.foregroundColor: NSColor.labelColor])
+                }
+            }
+            
+            // Update the main button title
+            cell.attributedTitle = NSAttributedString(string: dateFormatPopup.titleOfSelectedItem ?? "", attributes: [.foregroundColor: NSColor.labelColor])
         }
 
         // Match background color (if needed)
