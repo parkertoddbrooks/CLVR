@@ -530,11 +530,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
 
         let name = (filename as NSString).deletingPathExtension.lowercased()
-        let hasCopySuffix = name.hasSuffix(" copy")
+        let hasCopySuffix = name.hasSuffix(" copy") || name.matches(of: #/ copy \d+$/#).count > 0
         
         log("Checking file: \(filename), hasCopySuffix: \(hasCopySuffix)")
         
-        // Rename only if it has " copy" suffix
+        // Rename if it has " copy" or " copy X" suffix
         return hasCopySuffix
     }
 
@@ -561,18 +561,19 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let timestamp = formattedTimestamp()
         var newName: String
 
-        if name.lowercased().hasSuffix(" copy") {
-            name = (name as NSString).substring(to: name.count - 5)
-            newName = "\(name)-copy_\(timestamp).\(fileExtension)"
-        } else {
-            // Extract existing timestamps
-            let regex = try! NSRegularExpression(pattern: #"-copy_\d{4}-\d{2}-\d{2}-\d{6}(--\d{4}-\d{2}-\d{2}-\d{6})*$"#)
-            if let match = regex.firstMatch(in: name, options: [], range: NSRange(location: 0, length: name.utf16.count)) {
-                let timestampStart = match.range.location
-                name = (name as NSString).substring(to: timestampStart)
-            }
-            newName = "\(name)-copy_\(timestamp).\(fileExtension)"
+        // Remove " copy" or " copy X" suffix
+        if let range = name.range(of: #" copy( \d+)?$"#, options: .regularExpression) {
+            name = String(name[..<range.lowerBound])
         }
+
+        // Extract existing timestamps
+        let regex = try! NSRegularExpression(pattern: #"-copy_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}(--\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2})*$"#)
+        if let match = regex.firstMatch(in: name, options: [], range: NSRange(location: 0, length: name.utf16.count)) {
+            let timestampStart = match.range.location
+            name = (name as NSString).substring(to: timestampStart)
+        }
+
+        newName = "\(name)-copy_\(timestamp).\(fileExtension)"
 
         log("New name: \(newName)")
 
@@ -607,7 +608,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         return dateFormatter.string(from: Date())
     }
    
-    // stop rename 
+// stop rename 
     
     /// Updates the status item icon in the menu bar based on the current enabled state of the application.
     ///
