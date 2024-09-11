@@ -484,6 +484,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
 
+// start rename
+
     /// Handles file system events.
     ///
     /// - Parameter path: The path of the file that triggered the event.
@@ -529,12 +531,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         let name = (filename as NSString).deletingPathExtension.lowercased()
         let hasCopySuffix = name.hasSuffix(" copy")
-        let hasTimestamp = name.matches(regex: #"-copy_\d{4}-\d{2}-\d{2}-\d{6}$"#)
         
-        log("Checking file: \(filename), hasCopySuffix: \(hasCopySuffix), hasTimestamp: \(hasTimestamp)")
+        log("Checking file: \(filename), hasCopySuffix: \(hasCopySuffix)")
         
-        // Only rename if it has " copy" suffix and doesn't already have our timestamp
-        return hasCopySuffix && !hasTimestamp
+        // Rename only if it has " copy" suffix
+        return hasCopySuffix
     }
 
     /// Renames a file by adding a timestamp to its name.
@@ -575,15 +576,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         log("New name: \(newName)")
 
-        var newPath = directory.appendingPathComponent(newName).path
-
-        // Check if the new filename already exists
-        var counter = 1
-        while FileManager.default.fileExists(atPath: newPath) {
-            newName = "\(name)-copy_\(timestamp) (\(counter)).\(fileExtension)"
-            newPath = directory.appendingPathComponent(newName).path
-            counter += 1
-        } 
+        let newPath = directory.appendingPathComponent(newName).path
 
         do {
             try FileManager.default.moveItem(atPath: path, toPath: newPath)
@@ -613,6 +606,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         dateFormatter.dateFormat = "yyyy-MM-dd_HH-mm-ss"
         return dateFormatter.string(from: Date())
     }
+   
+    // stop rename 
+    
     /// Updates the status item icon in the menu bar based on the current enabled state of the application.
     ///
     /// This function sets the appropriate icon for the status item depending on whether the application
