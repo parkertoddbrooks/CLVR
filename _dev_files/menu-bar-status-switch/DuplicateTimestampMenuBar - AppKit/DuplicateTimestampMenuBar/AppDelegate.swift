@@ -502,7 +502,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let filename = url.lastPathComponent
         
         log("Checking if file should be renamed: \(filename)")
-        if shouldRenameFile(filename) {
+        if shouldRenameFile(at: url) {
             log("File should be renamed, attempting to rename: \(filename)")
             renameFile(at: path)
             
@@ -518,24 +518,26 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
 
-    /// Determines if a file should be renamed based on its filename.
+    /// Determines if a file should be renamed based on its filename and date added.
     ///
-    /// - Parameter filename: The name of the file to check.
+    /// - Parameter url: The URL of the file to check.
     /// - Returns: A boolean indicating whether the file should be renamed.
-    func shouldRenameFile(_ filename: String) -> Bool {
-        // Check if the file is hidden (starts with a dot)
-        if filename.hasPrefix(".") {
-            log("File is hidden, skipping: \(filename)")
-            return false
-        }
-
+    func shouldRenameFile(at url: URL) -> Bool {
+        let filename = url.lastPathComponent
         let name = (filename as NSString).deletingPathExtension.lowercased()
-        let hasCopySuffix = name.hasSuffix(" copy") || name.matches(of: #/ copy \d+$/#).count > 0
+        let hasCopySuffix = name.hasSuffix(" copy") || name.matches(regex: #" copy \d+$"#)
         
-        log("Checking file: \(filename), hasCopySuffix: \(hasCopySuffix)")
+        guard hasCopySuffix else { return false }
         
-        // Rename if it has " copy" or " copy X" suffix
-        return hasCopySuffix
+        // Check if the file was just added
+        if let dateAdded = try? url.resourceValues(forKeys: [.addedToDirectoryDateKey]).addedToDirectoryDate,
+           Date().timeIntervalSince(dateAdded) < 5 { // Consider files added within the last 5 seconds
+            log("File was just added: \(filename)")
+            return true
+        }
+        
+        log("File was not just added: \(filename)")
+        return false
     }
 
     /// Renames a file by adding a timestamp to its name.
@@ -545,12 +547,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         log("Attempting to rename file: \(path)")
         let url = URL(fileURLWithPath: path)
         let filename = url.lastPathComponent
-        
-        // Check if the file actually needs renaming
-        guard shouldRenameFile(filename) else {
-            log("File does not need renaming: \(filename)")
-            return
-        }
         
         let directory = url.deletingLastPathComponent()
         let fileExtension = url.pathExtension
@@ -562,22 +558,25 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         var newName: String
 
         // Remove " copy" or " copy X" suffix
-        if let range = name.range(of: #" copy( \d+)?$"#, options: .regularExpression) {
+        if name.lowercased().hasSuffix(" copy") {
+            name = (name as NSString).substring(to: name.count - 5)
+        } else if let range = name.range(of: #" copy \d+$"#, options: .regularExpression) {
             name = String(name[..<range.lowerBound])
-        }
-
-        // Extract existing timestamps
-        let regex = try! NSRegularExpression(pattern: #"-copy_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}(--\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2})*$"#)
-        if let match = regex.firstMatch(in: name, options: [], range: NSRange(location: 0, length: name.utf16.count)) {
-            let timestampStart = match.range.location
-            name = (name as NSString).substring(to: timestampStart)
         }
 
         newName = "\(name)-copy_\(timestamp).\(fileExtension)"
 
         log("New name: \(newName)")
 
-        let newPath = directory.appendingPathComponent(newName).path
+        var newPath = directory.appendingPathComponent(newName).path
+
+        // Check if the new filename already exists
+        var counter = 1
+        while FileManager.default.fileExists(atPath: newPath) {
+            newName = "\(name)-copy_\(timestamp) (\(counter)).\(fileExtension)"
+            newPath = directory.appendingPathComponent(newName).path
+            counter += 1
+        } 
 
         do {
             try FileManager.default.moveItem(atPath: path, toPath: newPath)
@@ -607,8 +606,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         dateFormatter.dateFormat = "yyyy-MM-dd_HH-mm-ss"
         return dateFormatter.string(from: Date())
     }
-   
+    // stop rename 
 // stop rename 
+   
     
     /// Updates the status item icon in the menu bar based on the current enabled state of the application.
     ///
