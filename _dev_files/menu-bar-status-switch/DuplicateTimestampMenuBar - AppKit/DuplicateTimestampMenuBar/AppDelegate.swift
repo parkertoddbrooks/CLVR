@@ -564,7 +564,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             name = String(name[..<range.lowerBound])
         }
 
-        newName = "\(name)-dupe_\(timestamp).\(fileExtension)"
+        // Use settings to choose between newName and newName2
+        if UserDefaults.standard.bool(forKey: "useAlternateNaming") {
+            newName = "\(name)-copy_\(timestamp).\(fileExtension)" // newName2
+        } else {
+            newName = "\(name)--\(timestamp).\(fileExtension)" // default newName
+        }
 
         log("New name: \(newName)")
 
@@ -573,7 +578,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // Check if the new filename already exists
         var counter = 1
         while FileManager.default.fileExists(atPath: newPath) {
-            newName = "\(name)-dupe_\(timestamp) (\(counter)).\(fileExtension)"
+            if UserDefaults.standard.bool(forKey: "useAlternateNaming") {
+                newName = "\(name)-copy_\(timestamp) (\(counter)).\(fileExtension)"
+            } else {
+                newName = "\(name)--\(timestamp) (\(counter)).\(fileExtension)"
+            }
             newPath = directory.appendingPathComponent(newName).path
             counter += 1
         } 
@@ -603,7 +612,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     ///         or time zones. It uses the system's current date and time.
     private func formattedTimestamp() -> String {
         let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd_HH-mm-ss"
+        dateFormatter.dateFormat = "yyyy-MM-dd--HH-mm-ss"
         return dateFormatter.string(from: Date())
     }
     // stop rename 
@@ -1072,8 +1081,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let dateFormatPopup = createPopUpButton(frame: NSRect(x: 270, y: yOffset, width: 270, height: 20))
         dateFormatPopup.addItems(withTitles: [
             //  The copy in the drop down is for the UX - the rename logic lives in the code
-            "name-copy_yyyy-MM-dd_HH-mm-ss.filename-extension (default)",
-            "name_yyyy-MM-dd_HH-mm-ss.filename-extension",
+            "name--yyyy-MM-dd--HH-mm-ss.filename-extension (default)",
+            "name_copy--yyyy-MM-dd--HH-mm-ss.filename-extension",
+            "name_copy--yyyy-MM-dd--HH-mm-ss.filename-extension",
         ])
        
         // Adjust appearance
