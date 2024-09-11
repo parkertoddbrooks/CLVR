@@ -564,7 +564,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             name = String(name[..<range.lowerBound])
         }
 
-        newName = "\(name)-copy_\(timestamp).\(fileExtension)"
+        newName = "\(name)-dupe_\(timestamp).\(fileExtension)"
 
         log("New name: \(newName)")
 
@@ -573,7 +573,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // Check if the new filename already exists
         var counter = 1
         while FileManager.default.fileExists(atPath: newPath) {
-            newName = "\(name)-copy_\(timestamp) (\(counter)).\(fileExtension)"
+            newName = "\(name)-dupe_\(timestamp) (\(counter)).\(fileExtension)"
             newPath = directory.appendingPathComponent(newName).path
             counter += 1
         } 
