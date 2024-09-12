@@ -1,6 +1,7 @@
 import Cocoa
 import UserNotifications
 
+// date format 
 enum NamingFormat: String, CaseIterable {
     case setting01 = "Setting01"
     case setting02 = "Setting02"
@@ -214,6 +215,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     
     private let selectedNamingFormatKey = "selectedNamingFormat"
     
+    // date format 
     var savedNamingFormat: NamingFormat {
         get {
             if let rawValue = UserDefaults.standard.string(forKey: selectedNamingFormatKey),
@@ -225,6 +227,24 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         set {
             UserDefaults.standard.set(newValue.rawValue, forKey: selectedNamingFormatKey)
             UserDefaults.standard.synchronize()
+        }
+    }
+    
+    // Ensure consistent use of savedNamingFormat
+    func applyNamingFormat(to fileName: String) -> String {
+        let format = savedNamingFormat
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd--HH-mm-ss"
+        let timestamp = dateFormatter.string(from: Date())
+        
+        let fileNameWithoutExtension = (fileName as NSString).deletingPathExtension
+        let fileExtension = (fileName as NSString).pathExtension
+        
+        switch format {
+        case .setting01:
+            return "\(fileNameWithoutExtension)--\(timestamp).\(fileExtension)"
+        case .setting02:
+            return "\(fileNameWithoutExtension)-copy--\(timestamp).\(fileExtension)"
         }
     }
     
