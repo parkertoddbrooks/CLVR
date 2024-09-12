@@ -9,6 +9,9 @@
 *.xcbkptlist
 *.xcdebugger/
 
+# VSCode settings
+*.vscode
+
 _dev_files/automator-app/cleaned-and-signed/*.app
 _dev_files/automator-app/cleaned-and-signed/DuplicateWithTimestamp.app
 
