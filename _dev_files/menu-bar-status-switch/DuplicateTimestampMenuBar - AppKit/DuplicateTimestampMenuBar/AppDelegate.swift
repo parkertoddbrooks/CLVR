@@ -464,34 +464,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         return paths
     }
 
-    private func resolveDocumentsBookmark() -> URL? {
-        guard let bookmark = documentsBookmark else {
-            log("No bookmark found for Documents", level: .warning)
-            return nil
-        }
-        
-        do {
-            var isStale = false
-            let url = try URL(resolvingBookmarkData: bookmark, options: .withSecurityScope, relativeTo: nil, bookmarkDataIsStale: &isStale)
-            
-            if isStale {
-                log("Bookmark for Documents is stale", level: .warning)
-                // Here you might want to request new permission and create a new bookmark
-                return nil
-            }
-            
-            if url.startAccessingSecurityScopedResource() {
-                return url
-            } else {
-                log("Failed to access security-scoped resource for Documents", level: .error)
-                return nil
-            }
-        } catch {
-            log("Error resolving bookmark for Documents: \(error.localizedDescription)", level: .error)
-            return nil
-        }
-    }
-
     /// Requests permission to access the Desktop and Documents folders.
     func requestPermission() {
         log("Requesting permission for Desktop and Documents folders")
@@ -808,6 +780,34 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
 
+    private func resolveDocumentsBookmark() -> URL? {
+        guard let bookmark = documentsBookmark else {
+            log("No bookmark found for Documents", level: .warning)
+            return nil
+        }
+        
+        do {
+            var isStale = false
+            let url = try URL(resolvingBookmarkData: bookmark, options: .withSecurityScope, relativeTo: nil, bookmarkDataIsStale: &isStale)
+            
+            if isStale {
+                log("Bookmark for Documents is stale", level: .warning)
+                // Here you might want to request new permission and create a new bookmark
+                return nil
+            }
+            
+            if url.startAccessingSecurityScopedResource() {
+                return url
+            } else {
+                log("Failed to access security-scoped resource for Documents", level: .error)
+                return nil
+            }
+        } catch {
+            log("Error resolving bookmark for Documents: \(error.localizedDescription)", level: .error)
+            return nil
+        }
+    }
+
     func verifyFolderAccess() -> Bool {
         let paths = getWatchedPaths()
         log("Verifying folder access for paths: \(paths)")
@@ -825,16 +825,17 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         log("Failed to gain access to watched folders", level: .error)
         let failureAlert = NSAlert()
         failureAlert.messageText = "Folder Access Required"
-        failureAlert.informativeText = "CLVR needs access to your Desktop and Documents folders to function properly. Please grant access in System Settings > Privacy & Security > Files and Folders, then restart the app."
+        failureAlert.informativeText = "CLVR needs access to your Desktop and Documents folders to function properly. Please select these folders when prompted by the app."
         failureAlert.alertStyle = .warning
-        failureAlert.addButton(withTitle: "Open System Settings")
-        failureAlert.addButton(withTitle: "OK")
+        failureAlert.addButton(withTitle: "Request Access")
+        failureAlert.addButton(withTitle: "Cancel and Quit")
         
         let response = failureAlert.runModal()
         if response == .alertFirstButtonReturn {
-            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_FilesAndFolders") {
-                NSWorkspace.shared.open(url)
-            }
+            requestPermission()
+        } else {
+            // User chose "Cancel and Quit"
+            NSApplication.shared.terminate(nil)
         }
     }
 
