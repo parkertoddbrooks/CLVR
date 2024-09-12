@@ -1186,8 +1186,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         // Set text color for the title and menu items
         if let cell = dateFormatPopup.cell as? NSPopUpButtonCell {
-            // Set the default menu item
-            dateFormatPopup.selectItem(at: 0)
+            // Set the initial selection based on the current savedNamingFormat
+            if let index = NamingFormat.allCases.firstIndex(of: savedNamingFormat) {
+                dateFormatPopup.selectItem(at: index)
+            } else {
+                // Fallback to default if saved format is not found
+                dateFormatPopup.selectItem(withTitle: NamingFormat.setting01.displayName)
+            }
             
             // Set attributed title for all items
             for index in 0..<dateFormatPopup.numberOfItems {
@@ -1255,6 +1260,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
            let format = NamingFormat.allCases.first(where: { $0.displayName == selectedItem.title }) {
             log("Saving new naming format: \(format.rawValue)", level: .debug)
             savedNamingFormat = format
+            UserDefaults.standard.set(format.rawValue, forKey: selectedNamingFormatKey)
+            UserDefaults.standard.synchronize()
         }
     }
 
