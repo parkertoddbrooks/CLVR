@@ -40,4 +40,4 @@ We may update this Privacy Policy from time to time. Any changes will be reflect
 
 If you have any questions or concerns about this Privacy Policy, please contact us at:
 
-[https://github.com/parkertoddbrooks/CLVR](https://github.com/parkertoddbrooks/CLVR)
+[https://github.com/parkertoddbrooks/CLVR/issues](https://github.com/parkertoddbrooks/CLVR/issue)
