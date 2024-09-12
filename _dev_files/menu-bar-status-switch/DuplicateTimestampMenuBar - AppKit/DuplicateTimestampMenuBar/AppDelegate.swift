@@ -1,6 +1,29 @@
 import Cocoa
 import UserNotifications
 
+enum NamingFormat: String, CaseIterable {
+    case setting01 = "Setting01"
+    case setting02 = "Setting02"
+    
+    var displayName: String {
+        switch self {
+        case .setting01:
+            return "name--yyyy-MM-dd--HH-mm-ss.filename-extension (default)"
+        case .setting02:
+            return "name-copy--yyyy-MM-dd--HH-mm-ss.filename-extension"
+        }
+    }
+    
+    var usesCopy: Bool {
+        switch self {
+        case .setting01:
+            return false
+        case .setting02:
+            return true
+        }
+    }
+}
+
 /// Defines different log levels for the application.
 ///
 /// Each case represents a severity level for logging with a corresponding string value.
@@ -191,12 +214,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     
     private let selectedNamingFormatKey = "selectedNamingFormat"
     
-    var savedNamingFormat: String {
+    var savedNamingFormat: NamingFormat {
         get {
-            return UserDefaults.standard.string(forKey: selectedNamingFormatKey) ?? "name--yyyy-MM-dd--HH-mm-ss.filename-extension (default)"
+            if let rawValue = UserDefaults.standard.string(forKey: selectedNamingFormatKey),
+               let format = NamingFormat(rawValue: rawValue) {
+                return format
+            }
+            return .setting01 // Default value
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: selectedNamingFormatKey)
+            UserDefaults.standard.set(newValue.rawValue, forKey: selectedNamingFormatKey)
             UserDefaults.standard.synchronize()
         }
     }
@@ -296,13 +323,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         // Set default value for selectedNamingFormat if not already set
         if UserDefaults.standard.string(forKey: "selectedNamingFormat") == nil {
-            UserDefaults.standard.set("name--yyyy-MM-dd--HH-mm-ss.filename-extension (default)", forKey: "selectedNamingFormat")
+            UserDefaults.standard.set(NamingFormat.setting01.rawValue, forKey: "selectedNamingFormat")
             UserDefaults.standard.synchronize()
         }
 
         let savedFormat = savedNamingFormat
-        log("Loaded naming format on app launch: \(savedFormat)", level: .debug)
-        log("Loaded naming format on app launch: \(savedNamingFormat)", level: .debug)
+        log("Loaded naming format on app launch: \(savedFormat.rawValue)", level: .debug)
+        log("Loaded naming format on app launch: \(savedNamingFormat.rawValue)", level: .debug)
 
     }
 
@@ -587,18 +614,15 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             name = String(name[..<range.lowerBound])
         }
 
-        // DATE PREF
         let selectedFormat = savedNamingFormat
-        log("Using naming format: \(selectedFormat)", level: .debug)
-        let useAlternateNaming = selectedFormat.contains("-copy--")
+        log("Using naming format: \(selectedFormat.rawValue)", level: .debug)
 
-        if useAlternateNaming {
+        if selectedFormat.usesCopy {
             newName = "\(name)-copy--\(timestamp).\(fileExtension)"
         } else {
             newName = "\(name)--\(timestamp).\(fileExtension)"
         }
 
-        log("Using naming format: \(selectedFormat)", level: .debug)
         log("New name: \(newName)", level: .debug)
 
         var newPath = directory.appendingPathComponent(newName).path
@@ -606,7 +630,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // Check if the new filename already exists
         var counter = 1
         while FileManager.default.fileExists(atPath: newPath) {
-            if useAlternateNaming {
+            if selectedFormat.usesCopy {
                 newName = "\(name)-copy--\(timestamp) (\(counter)).\(fileExtension)"
             } else {
                 newName = "\(name)--\(timestamp) (\(counter)).\(fileExtension)"
@@ -1016,9 +1040,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // Update the existing window to reflect current preferences
         if let dateFormatPopup = settingsWindow?.contentView?.subviews.compactMap({ $0 as? NSPopUpButton }).first {
             let savedFormat = savedNamingFormat
-            log("Current saved format when showing settings: \(savedFormat)", level: .debug)
+            log("Current saved format when showing settings: \(savedFormat.rawValue)", level: .debug)
             
-            if let index = dateFormatPopup.itemTitles.firstIndex(of: savedFormat) {
+            if let index = NamingFormat.allCases.firstIndex(of: savedFormat) {
                 dateFormatPopup.selectItem(at: index)
                 log("Selected item in popup after setting: \(dateFormatPopup.titleOfSelectedItem ?? "None")", level: .debug)
             } else {
@@ -1117,23 +1141,18 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         mainContainer.addSubview(dateFormatLabel)
 
         let dateFormatPopup = createPopUpButton(frame: NSRect(x: 270, y: yOffset, width: 270, height: 20))
-        let formats = [
-            "name--yyyy-MM-dd--HH-mm-ss.filename-extension (default)",
-            "name-copy--yyyy-MM-dd--HH-mm-ss.filename-extension"
-        ]
+        let formats = NamingFormat.allCases.map { $0.displayName }
         dateFormatPopup.addItems(withTitles: formats)
         
-        // DATE PREF
-        // Set initial selection based on saved preference
         let savedFormat = savedNamingFormat
-        log("Saved format when creating settings window: \(savedFormat)", level: .debug)
-        if let index = formats.firstIndex(of: savedFormat) {
+        log("Saved format when creating settings window: \(savedFormat.rawValue)", level: .debug)
+        
+        if let index = NamingFormat.allCases.firstIndex(of: savedFormat) {
             dateFormatPopup.selectItem(at: index)
             log("Selected format in popup: \(dateFormatPopup.titleOfSelectedItem ?? "None")", level: .debug)
         } else {
-            log("Saved format not found in popup items", level: .warning)
-            // If saved format is not found, select the default
-            dateFormatPopup.selectItem(withTitle: "name--yyyy-MM-dd--HH-mm-ss.filename-extension (default)")
+            log("Saved format not found in popup items. Available items: \(dateFormatPopup.itemTitles)", level: .warning)
+            dateFormatPopup.selectItem(withTitle: NamingFormat.setting01.displayName)
         }
         
         dateFormatPopup.target = self
@@ -1212,9 +1231,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc func dateFormatChanged(_ sender: NSPopUpButton) {
-        let selectedFormat = sender.titleOfSelectedItem ?? "name--yyyy-MM-dd--HH-mm-ss.filename-extension (default)"
-        log("Saving new naming format: \(selectedFormat)", level: .debug)
-        savedNamingFormat = selectedFormat
+        if let selectedItem = sender.selectedItem,
+           let format = NamingFormat.allCases.first(where: { $0.displayName == selectedItem.title }) {
+            log("Saving new naming format: \(format.rawValue)", level: .debug)
+            savedNamingFormat = format
+        }
     }
 
     /// Creates a label with specified text, font size, weight, and color.
