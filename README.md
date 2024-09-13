@@ -87,4 +87,4 @@ A continuously updated file containing Claude's recommendations for next steps i
 Please open a ticket on at: https://github.com/parkertoddbrooks/CLVR/issues
 
 ## License
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project's source code and project files are licensed under the MIT License. However, the app names, imagery, and compiled binaries are copyrighted. Please see the [LICENSE](LICENSE) file for more details.
