@@ -80,6 +80,7 @@ A continuously updated file containing Claude's recommendations for next steps i
   - Hidden file compatibility
   - Compatible with open at login preferences
   - Added privacy policy
+  - Updated Licensing to include app names, imagery, and compiled binaries
   - Added app store release
   - Renamed app and respoitory to CLVR
  
