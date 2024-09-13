@@ -4,7 +4,7 @@ CLVR (klōvər) - v2.0.0
 
 A macOS utility that automatically appends timestamps to duplicated file names.
 
-## How to Use:
+### How to Use:
 1. Select any file and press Command-D to duplicate it.
 2. The duplicated file, initially named filename `copy.file-extension`, will be automatically renamed to `filename--YYYY-MM-DD--HH-MM-SS.file-extension`.
 
