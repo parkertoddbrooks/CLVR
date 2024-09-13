@@ -8,7 +8,7 @@ A macOS utility that automatically appends timestamps to duplicated file names.
 1. Select any file and press Command-D to duplicate it.
 2. The duplicated file, initially named filename `copy.file-extension`, will be automatically renamed to `filename--YYYY-MM-DD--HH-MM-SS.file-extension`.
 
-Key features:
+### Key features:
 - Low impact background operations
 - Visual feedback via animated menu bar icon
 - Two timestamp formats
@@ -16,7 +16,7 @@ Key features:
 - Preserves file extension, and works on hidden files
 - Compatible with open at login preferences
 
-Privacy Considerations:
+### Privacy Considerations:
 - Only accesses and modifies files in user-selected folders
 - File monitoring is limited to detecting changes for renaming purposes only
 - No data is transmitted outside of the user's system
