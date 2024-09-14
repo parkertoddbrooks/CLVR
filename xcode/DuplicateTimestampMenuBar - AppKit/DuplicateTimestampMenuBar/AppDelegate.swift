@@ -528,36 +528,102 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     // start rename
 
-    /// Handles file system events.
-    ///
-    /// - Parameter path: The path of the file that triggered the event.
+    /// Dictionary to store information about items being monitored for stability
+    private var monitoredItems: [String: (size: Int64, date: Date, contentHash: Int, checkCount: Int)] = [:]
+
+    /// Handles file system events, initiating the monitoring process for items that need to be renamed
     func handleFileSystemEvent(path: String) {
         log("File system event detected: \(path)")
         
-        // Check if this file was recently processed
         if recentlyProcessedFiles.contains(path) {
-            log("File was recently processed, skipping: \(path)")
+            log("Item was recently processed, skipping: \(path)")
             return
         }
         
         let url = URL(fileURLWithPath: path)
-        let filename = url.lastPathComponent
+        let name = url.lastPathComponent
         
-        log("Checking if file should be renamed: \(filename)")
+        log("Checking if item should be renamed: \(name)")
         if shouldRenameFile(at: url) {
-            log("File should be renamed, attempting to rename: \(filename)")
-            renameFile(at: path)
-            
-            // Add the file to the recently processed set
-            recentlyProcessedFiles.insert(path)
-            
-            // Remove the file from the set after a short delay
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-                self?.recentlyProcessedFiles.remove(path)
-            }
+            log("Item should be renamed, starting monitoring: \(name)")
+            startMonitoringItem(at: path)
         } else {
-            log("File does not need to be renamed: \(filename)")
+            log("Item does not need to be renamed: \(name)")
         }
+    }
+
+    /// Starts monitoring an item (file or folder) for stability
+    func startMonitoringItem(at path: String) {
+        do {
+            let attributes = try FileManager.default.attributesOfItem(atPath: path)
+            let size = attributes[.size] as? Int64 ?? 0
+            let modificationDate = attributes[.modificationDate] as? Date ?? Date()
+            let isDirectory = attributes[.type] as? FileAttributeType == .typeDirectory
+            
+            let contentHash = isDirectory ? calculateFolderContentHash(path: path) : 0
+            
+            monitoredItems[path] = (size: size, date: modificationDate, contentHash: contentHash, checkCount: 0)
+            checkItemStability(path: path)
+        } catch {
+            log("Failed to get item attributes for: \(path)", level: .error)
+        }
+    }
+
+    /// Checks the stability of a monitored item
+    func checkItemStability(path: String) {
+        guard var itemInfo = monitoredItems[path] else { return }
+
+        do {
+            let attributes = try FileManager.default.attributesOfItem(atPath: path)
+            let newSize = attributes[.size] as? Int64 ?? 0
+            let newModificationDate = attributes[.modificationDate] as? Date ?? Date()
+            let isDirectory = attributes[.type] as? FileAttributeType == .typeDirectory
+            
+            let newContentHash = isDirectory ? calculateFolderContentHash(path: path) : 0
+
+            if newSize == itemInfo.size && newModificationDate == itemInfo.date && newContentHash == itemInfo.contentHash {
+                itemInfo.checkCount += 1
+                if itemInfo.checkCount >= 3 {  // Item has been stable for 3 checks
+                    monitoredItems.removeValue(forKey: path)
+                    renameFile(at: path)
+                    return
+                }
+            } else {
+                itemInfo.size = newSize
+                itemInfo.date = newModificationDate
+                itemInfo.contentHash = newContentHash
+                itemInfo.checkCount = 0
+            }
+
+            monitoredItems[path] = itemInfo
+
+            // Check again after a short delay
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                self?.checkItemStability(path: path)
+            }
+        } catch {
+            log("Error checking item stability: \(error.localizedDescription)", level: .error)
+            monitoredItems.removeValue(forKey: path)
+        }
+    }
+
+    /// Calculates a hash value representing the contents of a folder
+    func calculateFolderContentHash(path: String) -> Int {
+        var hasher = Hasher()
+        do {
+            let contents = try FileManager.default.contentsOfDirectory(atPath: path)
+            for item in contents {
+                hasher.combine(item)
+                let itemPath = (path as NSString).appendingPathComponent(item)
+                if let attributes = try? FileManager.default.attributesOfItem(atPath: itemPath) {
+                    hasher.combine(attributes[.size] as? Int64 ?? 0)
+                    hasher.combine(attributes[.modificationDate] as? Date ?? Date())
+                }
+            }
+        } catch {
+            log("Error calculating folder content hash: \(error.localizedDescription)", level: .error)
+        }
+        return hasher.finalize()
     }
 
     /// Determines if a file should be renamed based on its filename and date added.
@@ -586,15 +652,18 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     ///
     /// - Parameter path: The path of the file to rename.
     func renameFile(at path: String) {
-        log("Attempting to rename file: \(path)")
+        log("Attempting to rename item: \(path)")
         let url = URL(fileURLWithPath: path)
-        let filename = url.lastPathComponent
-        
         let directory = url.deletingLastPathComponent()
         let fileExtension = url.pathExtension
-        var name = (filename as NSString).deletingPathExtension
+        var name = url.lastPathComponent
 
-        log("File details - Name: \(name), Extension: \(fileExtension)")
+        // If the file has an extension, remove it from the name
+        if !fileExtension.isEmpty {
+            name = (name as NSString).deletingPathExtension
+        }
+
+        log("Item details - Name: \(name), Extension: \(fileExtension)")
 
         let timestamp = formattedTimestamp()
         var newName: String
@@ -610,9 +679,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         log("Using naming format: \(selectedFormat.rawValue)", level: .debug)
 
         if selectedFormat.usesCopy {
-            newName = "\(name)-copy--\(timestamp).\(fileExtension)"
+            newName = "\(name)-copy--\(timestamp)"
         } else {
-            newName = "\(name)--\(timestamp).\(fileExtension)"
+            newName = "\(name)--\(timestamp)"
+        }
+
+        // Add the file extension back only if it originally had one
+        if !fileExtension.isEmpty {
+            newName += ".\(fileExtension)"
         }
 
         log("New name: \(newName)", level: .debug)
@@ -622,12 +696,19 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // Check if the new filename already exists
         var counter = 1
         while FileManager.default.fileExists(atPath: newPath) {
+            var counterName: String
             if selectedFormat.usesCopy {
-                newName = "\(name)-copy--\(timestamp) (\(counter)).\(fileExtension)"
+                counterName = "\(name)-copy--\(timestamp) (\(counter))"
             } else {
-                newName = "\(name)--\(timestamp) (\(counter)).\(fileExtension)"
+                counterName = "\(name)--\(timestamp) (\(counter))"
             }
-            newPath = directory.appendingPathComponent(newName).path
+            
+            // Add the file extension back only if it originally had one
+            if !fileExtension.isEmpty {
+                counterName += ".\(fileExtension)"
+            }
+            
+            newPath = directory.appendingPathComponent(counterName).path
             counter += 1
         } 
 
@@ -635,12 +716,20 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             try FileManager.default.moveItem(atPath: path, toPath: newPath)
             log("Successfully renamed: \(path) to \(newPath)")
             
+            // Add the new path to recently processed files
+            recentlyProcessedFiles.insert(newPath)
+            
+            // Remove the new path from recently processed files after a delay
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
+                self?.recentlyProcessedFiles.remove(newPath)
+            }
+            
             // Trigger the animation after successful renaming
             DispatchQueue.main.async { [weak self] in
                 self?.animateStatusItemIcon()
             }
         } catch {
-            log("Error renaming file: \(error.localizedDescription)", level: .error)
+            log("Error renaming item: \(error.localizedDescription)", level: .error)
         }
     }
 
