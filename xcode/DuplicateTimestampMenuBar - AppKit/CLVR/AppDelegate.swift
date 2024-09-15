@@ -157,7 +157,7 @@ class FileSystemWatcher {
 ///
 /// This class handles the setup of the status bar item, menu, file system watching,
 /// and manages the app's enabled/disabled state.
-class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
+class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelegate {
     /// Shared instance of the AppDelegate for global access.
     static var shared: AppDelegate!
     
@@ -267,19 +267,34 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 log("Self is nil in showAboutWindow", level: .error)
                 return
             }
-            
-            log("Creating new about window", level: .debug)
-            let window = self.createAboutWindow()
-            self.aboutWindowController = NSWindowController(window: window)
-            
+            if self.aboutWindowController == nil {
+                log("Creating new about window", level: .debug)
+                let window = self.createAboutWindow()
+                window.delegate = self  // Set the window's delegate
+                self.aboutWindowController = NSWindowController(window: window)
+            } else {
+                log("About window already exists", level: .debug)
+            }
+
             log("Showing about window", level: .debug)
             self.aboutWindowController?.showWindow(nil)
-            
-            log("Making about window key window", level: .debug)
-            window.makeKeyAndOrderFront(nil)
-            
+
+            if let window = self.aboutWindowController?.window {
+                log("Making about window key window", level: .debug)
+                window.makeKeyAndOrderFront(nil)
+            }
+
             log("Activating app", level: .debug)
             NSApp.activate(ignoringOtherApps: true)
+        }
+    }
+
+    // NSWindowDelegate method
+    func windowWillClose(_ notification: Notification) {
+        if let window = notification.object as? NSWindow,
+           window == aboutWindowController?.window {
+            aboutWindowController = nil
+            log("About window closed, controller set to nil", level: .debug)
         }
     }
 
