@@ -1205,7 +1205,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDele
         contentView.wantsLayer = true
         contentView.layer?.backgroundColor = NSColor(named: "ContainerMainBackground")?.cgColor
 
-        // Adjust the position and height of the main container
+        // Adjust the main container
         let mainContainer = NSView(frame: NSRect(x: 20, y: 20, width: 560, height: 165))
         mainContainer.wantsLayer = true
         mainContainer.layer?.backgroundColor = NSColor(named: "ContainerInnerBackground")?.cgColor
@@ -1292,7 +1292,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDele
         if let cell = dateFormatPopup.cell as? NSPopUpButtonCell {
             cell.arrowPosition = .arrowAtBottom
             
-            // Set background color
+            // Set background color using color asset
             cell.backgroundColor = NSColor(named: "ContainerInnerBackground")
             
             // Set text color for all items
@@ -1353,7 +1353,41 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDele
         window.minSize = NSSize(width: 600, height: 205)
         window.maxSize = NSSize(width: 600, height: 205)
 
+        // Add an observer for appearance changes
+        NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { [weak self] _ in
+            self?.updateSettingsWindowColors()
+        }
+
         return window
+    }
+
+    /// Updates the colors of the settings window when the system appearance changes
+    private func updateSettingsWindowColors() {
+        guard let window = settingsWindow,
+              let contentView = window.contentView,
+              let mainContainer = contentView.subviews.first else {
+            return
+        }
+
+        contentView.layer?.backgroundColor = NSColor(named: "ContainerMainBackground")?.cgColor
+        mainContainer.layer?.backgroundColor = NSColor(named: "ContainerInnerBackground")?.cgColor
+        mainContainer.layer?.borderColor = NSColor(named: "ContainerBorder")?.cgColor
+
+        // Update colors for other elements if needed
+        for subview in mainContainer.subviews {
+            if let popUpButton = subview as? NSPopUpButton,
+               let cell = popUpButton.cell as? NSPopUpButtonCell {
+                cell.backgroundColor = NSColor(named: "ContainerInnerBackground")
+                
+                for index in 0..<popUpButton.numberOfItems {
+                    if let item = popUpButton.item(at: index) {
+                        item.attributedTitle = NSAttributedString(string: item.title, attributes: [.foregroundColor: NSColor.labelColor])
+                    }
+                }
+                
+                cell.attributedTitle = NSAttributedString(string: popUpButton.titleOfSelectedItem ?? "", attributes: [.foregroundColor: NSColor.labelColor])
+            }
+        }
     }
 
     @objc func dockToggleChanged(_ sender: NSSwitch) {
