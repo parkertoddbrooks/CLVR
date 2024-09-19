@@ -23,9 +23,9 @@ A macOS utility that automatically appends timestamps to duplicated file names.
 - More info here: [security-brief.md](security-brief.md)
 
 ## Quick Start
-1. Download the latest version of CLVR from [GitHub Releases](https://github.com/parkertoddbrooks/CLVR/releases)
+1. Download the latest macOS version of CLVR from [GitHub Releases](https://github.com/parkertoddbrooks/CLVR/releases)
 
-2. App is also available on the [Mac App Store](APP STORE URL)
+2. App is also available on the [Mac App Store](APP STORE URL). (Coming soon)
 
 ## AI-Assisted Development Insights
 
