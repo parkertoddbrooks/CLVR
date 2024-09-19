@@ -1,0 +1,24 @@
+
+
+/Users/parker/Documents/dev/claude-engineer/_Projects/duplicate-file-and-update-name-with-timestamp-sh/_dev_files/menu-bar-status-switch/DuplicateTimestampMenuBar/DuplicateTimestampMenuBar/DuplicateTimestampMenuBarApp.swift:64:23: error: cannot find 'ScriptManager' in scope
+            success = ScriptManager.shared.startDuplicateTimestamp()
+                      ^~~~~~~~~~~~~
+/Users/parker/Documents/dev/claude-engineer/_Projects/duplicate-file-and-update-name-with-timestamp-sh/_dev_files/menu-bar-status-switch/DuplicateTimestampMenuBar/DuplicateTimestampMenuBar/DuplicateTimestampMenuBarApp.swift:100:23: error: cannot find 'ScriptManager' in scope
+            success = ScriptManager.shared.stopDuplicateTimestamp()
+                      ^~~~~~~~~~~~~
+/Users/parker/Documents/dev/claude-engineer/_Projects/duplicate-file-and-update-name-with-timestamp-sh/_dev_files/menu-bar-status-switch/DuplicateTimestampMenuBar/DuplicateTimestampMenuBar/DuplicateTimestampMenuBarApp.swift:213:10: error: closure containing a declaration cannot be used with result builder 'SceneBuilder'
+    func showAlert(message: String) {
+         ^
+SwiftUI.SceneBuilder:2:30: note: struct 'SceneBuilder' declared here
+@resultBuilder public struct SceneBuilder {
+                             ^
+
+/Users/parker/Documents/dev/claude-engineer/_Projects/duplicate-file-and-update-name-with-timestamp-sh/_dev_files/menu-bar-status-switch/DuplicateTimestampMenuBar/DuplicateTimestampMenuBar/DuplicateTimestampMenuBarApp.swift:64:23: Cannot find 'ScriptManager' in scope
+
+/Users/parker/Documents/dev/claude-engineer/_Projects/duplicate-file-and-update-name-with-timestamp-sh/_dev_files/menu-bar-status-switch/DuplicateTimestampMenuBar/DuplicateTimestampMenuBar/DuplicateTimestampMenuBarApp.swift:100:23: Cannot find 'ScriptManager' in scope
+
+/Users/parker/Documents/dev/claude-engineer/_Projects/duplicate-file-and-update-name-with-timestamp-sh/_dev_files/menu-bar-status-switch/DuplicateTimestampMenuBar/DuplicateTimestampMenuBar/DuplicateTimestampMenuBarApp.swift:213:10: Closure containing a declaration cannot be used with result builder 'SceneBuilder'
+
+
+
+Build failed    7/26/24, 21:03    33.2 seconds

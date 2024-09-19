@@ -2,6 +2,17 @@
 *git-ignore*
 *git_ignore*
 
+# Xcode project files to ignore
+*.xcuserstate
+*.xcuserdata/
+*.xcworkspace/xcuserdata/
+*.xcbkptlist
+*.xcdebugger/
+
+# VSCode settings
+*.vscode
+*.vscode*
+
 _dev_files/automator-app/cleaned-and-signed/*.app
 _dev_files/automator-app/cleaned-and-signed/DuplicateWithTimestamp.app
 
@@ -37,14 +48,3 @@ Temporary Items
 *.tmp
 *.swp_dev_files/automator-app/cleaned-and-signed/DuplicateWithTimestamp.app/**
 _dev_files/automator-app/cleaned-and-signed/DuplicateWithTimestamp.app/**
-_dev_files/menu-bar-status-switch/DuplicateTimestampMenuBar - AppKit/DuplicateTimestampMenuBar.xcodeproj/project.pbxproj
-_dev_files/menu-bar-status-switch/DuplicateTimestampMenuBar - AppKit/DuplicateTimestampMenuBar.xcodeproj/project.xcworkspace/contents.xcworkspacedata
-_dev_files/menu-bar-status-switch/DuplicateTimestampMenuBar - AppKit/DuplicateTimestampMenuBar.xcodeproj/project.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
-_dev_files/menu-bar-status-switch/DuplicateTimestampMenuBar - AppKit/DuplicateTimestampMenuBar.xcodeproj/xcshareddata/xcschemes/DuplicateTimestampMenuBar.xcscheme
-_dev_files/menu-bar-status-switch/DuplicateTimestampMenuBar - AppKit/DuplicateTimestampMenuBar.xcodeproj/xcuserdata/parker.xcuserdatad/xcdebugger/Breakpoints_v2.xcbkptlist
-_dev_files/menu-bar-status-switch/DuplicateTimestampMenuBar - AppKit/DuplicateTimestampMenuBar.xcodeproj/xcuserdata/parker.xcuserdatad/xcschemes/xcschememanagement.plist
-_dev_files/menu-bar-status-switch/DuplicateTimestampMenuBar - Swift/DuplicateTimestampMenuBar.xcodeproj/project.pbxproj
-_dev_files/menu-bar-status-switch/DuplicateTimestampMenuBar - Swift/DuplicateTimestampMenuBar.xcodeproj/project.xcworkspace/contents.xcworkspacedata
-_dev_files/menu-bar-status-switch/DuplicateTimestampMenuBar - Swift/DuplicateTimestampMenuBar.xcodeproj/project.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
-_dev_files/menu-bar-status-switch/DuplicateTimestampMenuBar - Swift/DuplicateTimestampMenuBar.xcodeproj/project.xcworkspace/xcuserdata/parker.xcuserdatad/UserInterfaceState.xcuserstate
-_dev_files/menu-bar-status-switch/DuplicateTimestampMenuBar - Swift/DuplicateTimestampMenuBar.xcodeproj/xcuserdata/parker.xcuserdatad/xcschemes/xcschememanagement.plist
