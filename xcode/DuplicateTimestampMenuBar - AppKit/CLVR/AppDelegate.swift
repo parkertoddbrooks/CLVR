@@ -1178,7 +1178,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDele
         settingsWindowController?.showWindow(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
-
     /// Settings Window
     ///
     /// Creates and configures the settings window for the application.
@@ -1353,30 +1352,59 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDele
         window.minSize = NSSize(width: 600, height: 205)
         window.maxSize = NSSize(width: 600, height: 205)
 
-        // Add an observer for appearance changes
-        NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { [weak self] _ in
-            self?.updateSettingsWindowColors()
-        }
+        // Observe changes to the effectiveAppearance
+        contentView.addObserver(self, forKeyPath: "effectiveAppearance", options: [.new], context: nil)
 
         return window
     }
 
-    /// Updates the colors of the settings window when the system appearance changes
     private func updateSettingsWindowColors() {
+        log("Starting color update for settings window", level: .debug)
         guard let window = settingsWindow,
               let contentView = window.contentView,
               let mainContainer = contentView.subviews.first else {
+            log("Failed to get window components", level: .error)
             return
         }
 
-        contentView.layer?.backgroundColor = NSColor(named: "ContainerMainBackground")?.cgColor
-        mainContainer.layer?.backgroundColor = NSColor(named: "ContainerInnerBackground")?.cgColor
-        mainContainer.layer?.borderColor = NSColor(named: "ContainerBorder")?.cgColor
+        NSAppearance.currentDrawing().performAsCurrentDrawingAppearance {
+            contentView.layer?.backgroundColor = NSColor(named: "ContainerMainBackground")?.cgColor
+            mainContainer.layer?.backgroundColor = NSColor(named: "ContainerInnerBackground")?.cgColor
+            mainContainer.layer?.borderColor = NSColor(named: "ContainerBorder")?.cgColor
 
-        // Update colors for other elements if needed
-        for subview in mainContainer.subviews {
-            if let popUpButton = subview as? NSPopUpButton,
-               let cell = popUpButton.cell as? NSPopUpButtonCell {
+            log("Updated main container colors", level: .debug)
+
+            // Update colors for all subviews
+            updateColorsForSubviews(of: mainContainer)
+
+            // Force layout update
+            mainContainer.layout()
+            contentView.layout()
+        }
+
+        // Force a redraw of the window
+        window.display()
+        window.invalidateShadow()
+        
+        log("Finished updating colors for settings window", level: .debug)
+    }
+
+    private func updateColorsForSubviews(of view: NSView) {
+        for subview in view.subviews {
+            log("Updating colors for subview: \(type(of: subview))", level: .debug)
+            
+            if let label = subview as? NSTextField {
+                // Update label colors
+                if label.font?.pointSize == 13 {
+                    label.textColor = .labelColor
+                    log("Updated large label color", level: .debug)
+                } else if label.font?.pointSize == 11 {
+                    label.textColor = .secondaryLabelColor
+                    log("Updated small label color", level: .debug)
+                }
+            } else if let popUpButton = subview as? NSPopUpButton,
+                      let cell = popUpButton.cell as? NSPopUpButtonCell {
+                // Update popup button colors
                 cell.backgroundColor = NSColor(named: "ContainerInnerBackground")
                 
                 for index in 0..<popUpButton.numberOfItems {
@@ -1386,9 +1414,31 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDele
                 }
                 
                 cell.attributedTitle = NSAttributedString(string: popUpButton.titleOfSelectedItem ?? "", attributes: [.foregroundColor: NSColor.labelColor])
+                log("Updated popup button colors", level: .debug)
+            } else if subview is NSSwitch {
+                // NSSwitch adapts automatically, no need to update
+                log("NSSwitch detected, no manual update needed", level: .debug)
+            } else if let box = subview as? NSBox {
+                // Update separator colors
+                box.fillColor = .separatorColor
+                log("Updated separator color", level: .debug)
             }
+            
+            // Recursively update colors for nested subviews
+            updateColorsForSubviews(of: subview)
         }
     }
+
+    // Add this method to handle the observation
+    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
+        if keyPath == "effectiveAppearance" {
+            updateSettingsWindowColors()
+        } else {
+            super.observeValue(forKeyPath: keyPath, of: object, change: change, context: context)
+        }
+    }
+
+    // Remove the duplicate windowWillClose method
 
     @objc func dockToggleChanged(_ sender: NSSwitch) {
         if sender.state == .off {
