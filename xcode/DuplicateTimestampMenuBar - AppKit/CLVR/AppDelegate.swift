@@ -1204,13 +1204,42 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDele
         contentView.wantsLayer = true
         contentView.layer?.backgroundColor = NSColor(named: "ContainerMainBackground")?.cgColor
 
-        // Adjust the main container
-        let mainContainer = NSView(frame: NSRect(x: 20, y: 20, width: 560, height: 165))
-        mainContainer.wantsLayer = true
-        mainContainer.layer?.backgroundColor = NSColor(named: "ContainerInnerBackground")?.cgColor
-        mainContainer.layer?.cornerRadius = 10
-        mainContainer.layer?.borderWidth = 1
-        mainContainer.layer?.borderColor = NSColor(named: "ContainerBorder")?.cgColor
+        // Create a custom NSView subclass
+        class MainContainerView: NSView {
+            override init(frame frameRect: NSRect) {
+                super.init(frame: frameRect)
+
+                // Enable layer-backed view
+                self.wantsLayer = true
+
+                // Configure the layer properties
+                self.layer?.cornerRadius = 10
+                self.layer?.borderWidth = 1
+            }
+
+            required init?(coder decoder: NSCoder) {
+                super.init(coder: decoder)
+            }
+
+            // Override wantsUpdateLayer to return true
+            override var wantsUpdateLayer: Bool {
+                return true
+            }
+
+            // Override updateLayer to update the layer's properties
+            override func updateLayer() {
+                super.updateLayer()
+
+                // Update the background color
+                self.layer?.backgroundColor = NSColor(named: "ContainerInnerBackground")?.cgColor
+
+                // Update the border color
+                self.layer?.borderColor = NSColor(named: "ContainerBorder")?.cgColor
+            }
+        }
+
+        // Use the custom MainContainerView
+        let mainContainer = MainContainerView(frame: NSRect(x: 20, y: 20, width: 560, height: 165))
         contentView.addSubview(mainContainer)
 
         // Adjust the starting y-offset
@@ -1352,93 +1381,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDele
         window.minSize = NSSize(width: 600, height: 205)
         window.maxSize = NSSize(width: 600, height: 205)
 
-        // Observe changes to the effectiveAppearance
-        contentView.addObserver(self, forKeyPath: "effectiveAppearance", options: [.new], context: nil)
-
         return window
     }
-
-    private func updateSettingsWindowColors() {
-        log("Starting color update for settings window", level: .debug)
-        guard let window = settingsWindow,
-              let contentView = window.contentView,
-              let mainContainer = contentView.subviews.first else {
-            log("Failed to get window components", level: .error)
-            return
-        }
-
-        NSAppearance.currentDrawing().performAsCurrentDrawingAppearance {
-            contentView.layer?.backgroundColor = NSColor(named: "ContainerMainBackground")?.cgColor
-            mainContainer.layer?.backgroundColor = NSColor(named: "ContainerInnerBackground")?.cgColor
-            mainContainer.layer?.borderColor = NSColor(named: "ContainerBorder")?.cgColor
-
-            log("Updated main container colors", level: .debug)
-
-            // Update colors for all subviews
-            updateColorsForSubviews(of: mainContainer)
-
-            // Force layout update
-            mainContainer.layout()
-            contentView.layout()
-        }
-
-        // Force a redraw of the window
-        window.display()
-        window.invalidateShadow()
-        
-        log("Finished updating colors for settings window", level: .debug)
-    }
-
-    private func updateColorsForSubviews(of view: NSView) {
-        for subview in view.subviews {
-            log("Updating colors for subview: \(type(of: subview))", level: .debug)
-            
-            if let label = subview as? NSTextField {
-                // Update label colors
-                if label.font?.pointSize == 13 {
-                    label.textColor = .labelColor
-                    log("Updated large label color", level: .debug)
-                } else if label.font?.pointSize == 11 {
-                    label.textColor = .secondaryLabelColor
-                    log("Updated small label color", level: .debug)
-                }
-            } else if let popUpButton = subview as? NSPopUpButton,
-                      let cell = popUpButton.cell as? NSPopUpButtonCell {
-                // Update popup button colors
-                cell.backgroundColor = NSColor(named: "ContainerInnerBackground")
-                
-                for index in 0..<popUpButton.numberOfItems {
-                    if let item = popUpButton.item(at: index) {
-                        item.attributedTitle = NSAttributedString(string: item.title, attributes: [.foregroundColor: NSColor.labelColor])
-                    }
-                }
-                
-                cell.attributedTitle = NSAttributedString(string: popUpButton.titleOfSelectedItem ?? "", attributes: [.foregroundColor: NSColor.labelColor])
-                log("Updated popup button colors", level: .debug)
-            } else if subview is NSSwitch {
-                // NSSwitch adapts automatically, no need to update
-                log("NSSwitch detected, no manual update needed", level: .debug)
-            } else if let box = subview as? NSBox {
-                // Update separator colors
-                box.fillColor = .separatorColor
-                log("Updated separator color", level: .debug)
-            }
-            
-            // Recursively update colors for nested subviews
-            updateColorsForSubviews(of: subview)
-        }
-    }
-
-    // Add this method to handle the observation
-    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
-        if keyPath == "effectiveAppearance" {
-            updateSettingsWindowColors()
-        } else {
-            super.observeValue(forKeyPath: keyPath, of: object, change: change, context: context)
-        }
-    }
-
-    // Remove the duplicate windowWillClose method
 
     @objc func dockToggleChanged(_ sender: NSSwitch) {
         if sender.state == .off {
