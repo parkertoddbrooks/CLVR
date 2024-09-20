@@ -7,10 +7,8 @@ A macOS utility that automatically appends timestamps to duplicated file names.
 https://github.com/user-attachments/assets/9b8c0acb-e033-4b21-9064-1ed9d5e95330
 
 ### macOS app Downloads:
-- Latest Release - v2.0.1: [CLVR.app](https://github.com/parkertoddbrooks/CLVR/releases/download/v2.0.1/CLVR.app.zip) (macOS)
-  - [See all GitHub realeases](https://github.com/parkertoddbrooks/CLVR/releases)
+- Latest Release: [CLVR.app - v2.0.1](https://github.com/parkertoddbrooks/CLVR/releases/download/v2.0.1/CLVR.app.zip) (macOS)
 - Mac App Store (Coming soon)
-
 
 ### How to Use:
 1. Select any file and press Command-D to duplicate it.
