@@ -1178,7 +1178,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDele
         settingsWindowController?.showWindow(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
-
     /// Settings Window
     ///
     /// Creates and configures the settings window for the application.
@@ -1203,15 +1202,44 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDele
         window.contentView = contentView
 
         contentView.wantsLayer = true
-        contentView.layer?.backgroundColor = NSColor(red: 234/255, green: 234/255, blue: 234/255, alpha: 1.0).cgColor
+        contentView.layer?.backgroundColor = NSColor(named: "ContainerMainBackground")?.cgColor
 
-        // Adjust the position and height of the main container
-        let mainContainer = NSView(frame: NSRect(x: 20, y: 20, width: 560, height: 165))
-        mainContainer.wantsLayer = true
-        mainContainer.layer?.backgroundColor = NSColor(red: 230/255, green: 230/255, blue: 230/255, alpha: 1.0).cgColor
-        mainContainer.layer?.cornerRadius = 10
-        mainContainer.layer?.borderWidth = 1
-        mainContainer.layer?.borderColor = NSColor(red: 219/255, green: 219/255, blue: 219/255, alpha: 1.0).cgColor
+        // Create a custom NSView subclass
+        class MainContainerView: NSView {
+            override init(frame frameRect: NSRect) {
+                super.init(frame: frameRect)
+
+                // Enable layer-backed view
+                self.wantsLayer = true
+
+                // Configure the layer properties
+                self.layer?.cornerRadius = 10
+                self.layer?.borderWidth = 1
+            }
+
+            required init?(coder decoder: NSCoder) {
+                super.init(coder: decoder)
+            }
+
+            // Override wantsUpdateLayer to return true
+            override var wantsUpdateLayer: Bool {
+                return true
+            }
+
+            // Override updateLayer to update the layer's properties
+            override func updateLayer() {
+                super.updateLayer()
+
+                // Update the background color
+                self.layer?.backgroundColor = NSColor(named: "ContainerInnerBackground")?.cgColor
+
+                // Update the border color
+                self.layer?.borderColor = NSColor(named: "ContainerBorder")?.cgColor
+            }
+        }
+
+        // Use the custom MainContainerView
+        let mainContainer = MainContainerView(frame: NSRect(x: 20, y: 20, width: 560, height: 165))
         contentView.addSubview(mainContainer)
 
         // Adjust the starting y-offset
@@ -1265,7 +1293,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDele
         dateFormatLabel.frame = NSRect(x: 20, y: yOffset, width: 200, height: 20)
         mainContainer.addSubview(dateFormatLabel)
 
-        let dateFormatPopup = createPopUpButton(frame: NSRect(x: 270, y: yOffset, width: 270, height: 20))
+        let dateFormatPopup = createPopUpButton(frame: NSRect(x: 270, y: yOffset, width: 270, height: 24))
         let formats = NamingFormat.allCases.map { $0.displayName }
         dateFormatPopup.addItems(withTitles: formats)
         
@@ -1283,23 +1311,19 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDele
         dateFormatPopup.target = self
         dateFormatPopup.action = #selector(dateFormatChanged(_:))
 
-        // Adjust appearance
-        dateFormatPopup.bezelStyle = .roundedDisclosure
+        // Adjust appearance to match the desired style
+        dateFormatPopup.bezelStyle = .inline
         dateFormatPopup.isBordered = false
         dateFormatPopup.font = NSFont.systemFont(ofSize: 13)
         dateFormatPopup.controlSize = .regular
 
-        // Set text color for the title and menu items
         if let cell = dateFormatPopup.cell as? NSPopUpButtonCell {
-            // Set the initial selection based on the current savedNamingFormat
-            if let index = NamingFormat.allCases.firstIndex(of: savedNamingFormat) {
-                dateFormatPopup.selectItem(at: index)
-            } else {
-                // Fallback to default if saved format is not found
-                dateFormatPopup.selectItem(withTitle: NamingFormat.setting01.displayName)
-            }
+            cell.arrowPosition = .arrowAtBottom
             
-            // Set attributed title for all items
+            // Set background color using color asset
+            cell.backgroundColor = NSColor(named: "ContainerInnerBackground")
+            
+            // Set text color for all items
             for index in 0..<dateFormatPopup.numberOfItems {
                 if let item = dateFormatPopup.item(at: index) {
                     item.attributedTitle = NSAttributedString(string: item.title, attributes: [.foregroundColor: NSColor.labelColor])
@@ -1310,8 +1334,38 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDele
             cell.attributedTitle = NSAttributedString(string: dateFormatPopup.titleOfSelectedItem ?? "", attributes: [.foregroundColor: NSColor.labelColor])
         }
 
-        // Match background color (if needed)
-        dateFormatPopup.appearance = NSAppearance(named: .aqua)
+        // Custom drawing to achieve the desired look
+        dateFormatPopup.wantsLayer = true
+        dateFormatPopup.layer?.cornerRadius = 6
+        dateFormatPopup.layer?.masksToBounds = true
+
+        // Add custom view for hover effect
+        let customView = NSView(frame: dateFormatPopup.bounds)
+        customView.wantsLayer = true
+        customView.layer?.cornerRadius = 6
+        customView.layer?.masksToBounds = true
+        dateFormatPopup.addSubview(customView)
+        
+        // Move the custom view to the back
+        if let index = dateFormatPopup.subviews.firstIndex(of: customView) {
+            dateFormatPopup.subviews.remove(at: index)
+            dateFormatPopup.subviews.insert(customView, at: 0)
+        }
+
+        // Add tracking area for hover effect
+        let trackingArea = NSTrackingArea(rect: customView.bounds, options: [.mouseEnteredAndExited, .activeAlways], owner: self, userInfo: ["view": customView])
+        customView.addTrackingArea(trackingArea)
+
+        // Add notification observer for when the popup opens
+        NotificationCenter.default.addObserver(forName: NSPopUpButton.willPopUpNotification, object: dateFormatPopup, queue: nil) { _ in
+            dateFormatPopup.layer?.borderWidth = 1
+            dateFormatPopup.layer?.borderColor = NSColor(named: "ContainerBorder")?.cgColor
+        }
+
+        // Add notification observer for when the menu tracking ends (popup closes)
+        NotificationCenter.default.addObserver(forName: NSMenu.didEndTrackingNotification, object: dateFormatPopup.menu, queue: nil) { _ in
+            dateFormatPopup.layer?.borderWidth = 0
+        }
 
         mainContainer.addSubview(dateFormatPopup)
 
@@ -1409,6 +1463,24 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDele
         let popup = NSPopUpButton(frame: frame, pullsDown: false)
         popup.controlSize = .regular
         return popup
+    }
+
+    // Add these methods to your AppDelegate class
+    @objc func mouseEntered(with event: NSEvent) {
+        if let view = event.trackingArea?.userInfo?["view"] as? NSView {
+            view.layer?.backgroundColor = NSColor(named: "ContainerInnerBackgroundButton")?.withAlphaComponent(0.5).cgColor
+        }
+    }
+
+    @objc func mouseExited(with event: NSEvent) {
+        if let view = event.trackingArea?.userInfo?["view"] as? NSView {
+            view.layer?.backgroundColor = .clear
+        }
+    }
+
+    // Don't forget to remove the observers when appropriate, e.g., in deinit
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 }
 
