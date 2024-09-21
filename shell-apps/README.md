@@ -1,3 +1,9 @@
+This sh parts of the app are now deprecated.
+
+Added here so a branch change isn't required to access the files.
+
+The v1.1.0 archive of main that contains the latest sh files, signed Automator App & DMG files, DMG build instructions, and where the LIC changed from 100% MIT is here: https://github.com/parkertoddbrooks/CLVR/tree/main-v1-0-0--archive-2024-09-12
+
 # Duplicate File and Update Name with Timestamp (App & Shell Script)
 
 This project monitors the Desktop and Documents for file duplication events and automatically updates the names of duplicated files with a timestamp format. It can be run as an app, or in the CLI.
