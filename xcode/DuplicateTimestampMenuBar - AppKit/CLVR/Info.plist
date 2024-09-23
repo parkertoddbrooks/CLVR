@@ -6,6 +6,8 @@
 	<false/>
 	<key>CFBundleIdentifier</key>
 	<string>CLVR</string>
+	<key>CFBundleVersion</key>
+	<string>2.0.2</string>
 	<key>com.apple.security.files.user-selected.read-write</key>
 	<true/>
 	<key>NSDesktopFolderUsageDescription</key>
