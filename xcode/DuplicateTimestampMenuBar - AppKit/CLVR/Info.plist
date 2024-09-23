@@ -3,8 +3,8 @@
 <plist version="1.0">
 <dict>
 	<key>NSRequiresAquaSystemAppearance</key>
-    <false/>
-    <key>CFBundleIdentifier</key>
+	<false/>
+	<key>CFBundleIdentifier</key>
 	<string>CLVR</string>
 	<key>com.apple.security.files.user-selected.read-write</key>
 	<true/>
@@ -14,5 +14,3 @@
 	<string>CLVR needs access to your Documents folder to monitor and rename files.</string>
 </dict>
 </plist>
-
-
