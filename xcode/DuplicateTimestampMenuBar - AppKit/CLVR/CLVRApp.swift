@@ -1,3 +1,5 @@
+// v1.0.2
+
 import Cocoa
 
 @main
