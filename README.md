@@ -11,7 +11,7 @@ CLVR (klōvər) - v2.0.1
 ### macOS app Downloads:
 Latest Releases:
  - [CLVR.app - v2.0.1](https://github.com/parkertoddbrooks/CLVR/releases/download/v2.0.1/CLVR.app.zip) (macOS)
-- [macOS App Store] (https://apps.apple.com/us/app/clvr-kl%C5%8Dv%C9%99r/id6670770737?mt=12)
+- [macOS App Store](https://apps.apple.com/us/app/clvr-kl%C5%8Dv%C9%99r/id6670770737?mt=12)
 
 ### How to Use:
 1. Select any file and press Command-D to duplicate it.
